@@ -1,15 +1,17 @@
 package com.example.android_camerax;
 
-
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
+import android.widget.SeekBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.Camera;
+import androidx.camera.core.CameraControl;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
@@ -35,6 +37,8 @@ public class MainActivity extends AppCompatActivity {
 
     private PreviewView previewView;
     private ImageCapture imageCapture;
+    private Camera camera;
+    private CameraControl cameraControl;
     private CameraSelector cameraSelector;
     private ProcessCameraProvider cameraProvider;
     private ExecutorService cameraExecutor;
@@ -49,21 +53,36 @@ public class MainActivity extends AppCompatActivity {
         previewView = findViewById(R.id.previewView);
         Button captureButton = findViewById(R.id.captureButton);
         Button switchCameraButton = findViewById(R.id.switchCameraButton);
+        SeekBar exposureSeekBar = findViewById(R.id.exposureSeekBar);
 
-        // Kiểm tra quyền truy cập camera
         if (allPermissionsGranted()) {
             startCamera();
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
         }
 
-        // Xử lý sự kiện khi nhấn nút Capture
         captureButton.setOnClickListener(v -> takePhoto());
 
-        // Xử lý sự kiện khi nhấn nút Switch Camera
         switchCameraButton.setOnClickListener(v -> {
             isUsingFrontCamera = !isUsingFrontCamera;
             startCamera();
+        });
+
+        exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (cameraControl != null) {
+                    // Điều chỉnh độ sáng, giá trị từ -10 đến 10
+                    float exposureCompensation = (progress - 5) * 0.5f; // Chia nhỏ giá trị để tăng độ chính xác
+                    cameraControl.setExposureCompensationIndex((int) exposureCompensation);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
         cameraExecutor = Executors.newSingleThreadExecutor();
@@ -78,7 +97,6 @@ public class MainActivity extends AppCompatActivity {
                 Preview preview = new Preview.Builder().build();
                 imageCapture = new ImageCapture.Builder().build();
 
-                // Chọn camera dựa trên giá trị của isUsingFrontCamera
                 cameraSelector = new CameraSelector.Builder()
                         .requireLensFacing(isUsingFrontCamera ? CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK)
                         .build();
@@ -86,7 +104,8 @@ public class MainActivity extends AppCompatActivity {
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
                 cameraProvider.unbindAll();
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
+                camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
+                cameraControl = camera.getCameraControl();
 
             } catch (ExecutionException | InterruptedException e) {
                 Log.e("CameraX", "Error starting camera", e);
@@ -99,7 +118,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // Tạo file để lưu ảnh
         File photoFile = new File(getOutputDirectory(),
                 new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss-SSS", Locale.US)
                         .format(System.currentTimeMillis()) + ".jpg");
@@ -107,7 +125,6 @@ public class MainActivity extends AppCompatActivity {
         ImageCapture.OutputFileOptions outputOptions =
                 new ImageCapture.OutputFileOptions.Builder(photoFile).build();
 
-        // Chụp ảnh
         imageCapture.takePicture(outputOptions, ContextCompat.getMainExecutor(this),
                 new ImageCapture.OnImageSavedCallback() {
                     @Override
