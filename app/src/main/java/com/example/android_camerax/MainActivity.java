@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraControl;
+import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageCapture imageCapture;
     private Camera camera;
     private CameraControl cameraControl;
+    private CameraInfo cameraInfo;
     private CameraSelector cameraSelector;
     private ProcessCameraProvider cameraProvider;
     private ExecutorService cameraExecutor;
@@ -54,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         Button captureButton = findViewById(R.id.captureButton);
         Button switchCameraButton = findViewById(R.id.switchCameraButton);
         SeekBar exposureSeekBar = findViewById(R.id.exposureSeekBar);
+        SeekBar zoomSeekBar = findViewById(R.id.zoomSeekBar);
 
         if (allPermissionsGranted()) {
             startCamera();
@@ -85,6 +88,24 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
+        zoomSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (cameraControl != null && cameraInfo != null) {
+                    float minZoomRatio = cameraInfo.getZoomState().getValue().getMinZoomRatio();
+                    float maxZoomRatio = cameraInfo.getZoomState().getValue().getMaxZoomRatio();
+                    float zoomRatio = minZoomRatio + (progress / 100.0f) * (maxZoomRatio - minZoomRatio);
+                    cameraControl.setZoomRatio(zoomRatio);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
         cameraExecutor = Executors.newSingleThreadExecutor();
     }
 
@@ -106,6 +127,7 @@ public class MainActivity extends AppCompatActivity {
                 cameraProvider.unbindAll();
                 camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
                 cameraControl = camera.getCameraControl();
+                cameraInfo = camera.getCameraInfo();
 
             } catch (ExecutionException | InterruptedException e) {
                 Log.e("CameraX", "Error starting camera", e);

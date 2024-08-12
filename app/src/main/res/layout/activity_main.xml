@@ -37,4 +37,16 @@
         android:layout_alignParentBottom="true"
         android:layout_marginBottom="32dp"
         android:layout_marginStart="16dp" />
+
+    <SeekBar
+        android:id="@+id/zoomSeekBar"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:max="100"
+        android:progress="50"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="64dp"
+        android:layout_marginStart="16dp" />
+
 </RelativeLayout>
