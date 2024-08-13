@@ -1,9 +1,9 @@
 package com.example.android_camerax;
-
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.ScaleGestureDetector;
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.Toast;
@@ -46,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private ExecutorService cameraExecutor;
 
     private boolean isUsingFrontCamera = false;
+    private ScaleGestureDetector scaleGestureDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,6 +105,32 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        // Tạo ScaleGestureDetector để phát hiện cử chỉ pinch-to-zoom
+        scaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                if (cameraControl != null && cameraInfo != null) {
+                    float currentZoomRatio = cameraInfo.getZoomState().getValue().getZoomRatio();
+                    float scaleFactor = detector.getScaleFactor();
+                    float newZoomRatio = currentZoomRatio * scaleFactor;
+
+                    // Đảm bảo giá trị zoom nằm trong khoảng hợp lệ
+                    float minZoomRatio = cameraInfo.getZoomState().getValue().getMinZoomRatio();
+                    float maxZoomRatio = cameraInfo.getZoomState().getValue().getMaxZoomRatio();
+                    newZoomRatio = Math.max(minZoomRatio, Math.min(newZoomRatio, maxZoomRatio));
+
+                    cameraControl.setZoomRatio(newZoomRatio);
+                }
+                return true;
+            }
+        });
+
+        // Gán listener cho PreviewView để nhận các sự kiện cảm ứng
+        previewView.setOnTouchListener((v, event) -> {
+            scaleGestureDetector.onTouchEvent(event);
+            return true;
         });
 
         cameraExecutor = Executors.newSingleThreadExecutor();
