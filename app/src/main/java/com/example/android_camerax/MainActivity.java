@@ -1,4 +1,6 @@
 package com.example.android_camerax;
+
+
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -76,9 +78,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (cameraControl != null) {
-                    // Điều chỉnh độ sáng, giá trị từ -10 đến 10
-                    float exposureCompensation = (progress - 5) * 0.5f; // Chia nhỏ giá trị để tăng độ chính xác
-                    cameraControl.setExposureCompensationIndex((int) exposureCompensation);
+                    // Điều chỉnh độ sáng, giá trị từ -2 đến 2
+                    float minValue = cameraInfo.getExposureState().getExposureCompensationRange().getLower();
+                    float maxValue = cameraInfo.getExposureState().getExposureCompensationRange().getUpper();
+                    int exposureIndex = (int) ((progress / 100.0f) * (maxValue - minValue) + minValue);
+                    cameraControl.setExposureCompensationIndex(exposureIndex);
                 }
             }
 
@@ -89,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
+        // Lắng nghe thay đổi giá trị trên SeekBar để thu phóng camera
         zoomSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -122,6 +127,9 @@ public class MainActivity extends AppCompatActivity {
                     newZoomRatio = Math.max(minZoomRatio, Math.min(newZoomRatio, maxZoomRatio));
 
                     cameraControl.setZoomRatio(newZoomRatio);
+                    // Cập nhật SeekBar khi zoom thay đổi
+                    int progress = (int) ((newZoomRatio - minZoomRatio) / (maxZoomRatio - minZoomRatio) * 100);
+                    zoomSeekBar.setProgress(progress);
                 }
                 return true;
             }
