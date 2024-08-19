@@ -4,10 +4,12 @@ package com.example.android_camerax;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.util.Log;
 import android.view.ScaleGestureDetector;
 import android.widget.Button;
 import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -49,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isUsingFrontCamera = false;
     private ScaleGestureDetector scaleGestureDetector;
+    private TextView countdownTextView;
+    private SeekBar zoomSeekBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,7 +63,8 @@ public class MainActivity extends AppCompatActivity {
         Button captureButton = findViewById(R.id.captureButton);
         Button switchCameraButton = findViewById(R.id.switchCameraButton);
         SeekBar exposureSeekBar = findViewById(R.id.exposureSeekBar);
-        SeekBar zoomSeekBar = findViewById(R.id.zoomSeekBar);
+        countdownTextView = findViewById(R.id.countdownTextView);
+        zoomSeekBar = findViewById(R.id.zoomSeekBar);
 
         if (allPermissionsGranted()) {
             startCamera();
@@ -67,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
         }
 
-        captureButton.setOnClickListener(v -> takePhoto());
+        captureButton.setOnClickListener(v -> startCountdown());
 
         switchCameraButton.setOnClickListener(v -> {
             isUsingFrontCamera = !isUsingFrontCamera;
@@ -78,7 +83,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (cameraControl != null) {
-                    // Điều chỉnh độ sáng, giá trị từ -2 đến 2
                     float minValue = cameraInfo.getExposureState().getExposureCompensationRange().getLower();
                     float maxValue = cameraInfo.getExposureState().getExposureCompensationRange().getUpper();
                     int exposureIndex = (int) ((progress / 100.0f) * (maxValue - minValue) + minValue);
@@ -93,14 +97,13 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
-        // Lắng nghe thay đổi giá trị trên SeekBar để thu phóng camera
         zoomSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (cameraControl != null && cameraInfo != null) {
-                    float minZoomRatio = cameraInfo.getZoomState().getValue().getMinZoomRatio();
-                    float maxZoomRatio = cameraInfo.getZoomState().getValue().getMaxZoomRatio();
-                    float zoomRatio = minZoomRatio + (progress / 100.0f) * (maxZoomRatio - minZoomRatio);
+                    float zoomRatio = cameraInfo.getZoomState().getValue().getMinZoomRatio()
+                            + (cameraInfo.getZoomState().getValue().getMaxZoomRatio()
+                            - cameraInfo.getZoomState().getValue().getMinZoomRatio()) * (progress / 100.0f);
                     cameraControl.setZoomRatio(zoomRatio);
                 }
             }
@@ -112,7 +115,6 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
-        // Tạo ScaleGestureDetector để phát hiện cử chỉ pinch-to-zoom
         scaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
@@ -121,21 +123,17 @@ public class MainActivity extends AppCompatActivity {
                     float scaleFactor = detector.getScaleFactor();
                     float newZoomRatio = currentZoomRatio * scaleFactor;
 
-                    // Đảm bảo giá trị zoom nằm trong khoảng hợp lệ
                     float minZoomRatio = cameraInfo.getZoomState().getValue().getMinZoomRatio();
                     float maxZoomRatio = cameraInfo.getZoomState().getValue().getMaxZoomRatio();
                     newZoomRatio = Math.max(minZoomRatio, Math.min(newZoomRatio, maxZoomRatio));
 
                     cameraControl.setZoomRatio(newZoomRatio);
-                    // Cập nhật SeekBar khi zoom thay đổi
-                    int progress = (int) ((newZoomRatio - minZoomRatio) / (maxZoomRatio - minZoomRatio) * 100);
-                    zoomSeekBar.setProgress(progress);
+                    zoomSeekBar.setProgress((int) ((newZoomRatio - minZoomRatio) / (maxZoomRatio - minZoomRatio) * 100));
                 }
                 return true;
             }
         });
 
-        // Gán listener cho PreviewView để nhận các sự kiện cảm ứng
         previewView.setOnTouchListener((v, event) -> {
             scaleGestureDetector.onTouchEvent(event);
             return true;
@@ -164,10 +162,35 @@ public class MainActivity extends AppCompatActivity {
                 cameraControl = camera.getCameraControl();
                 cameraInfo = camera.getCameraInfo();
 
+                // Cập nhật thanh Zoom SeekBar khi khởi động camera
+                zoomSeekBar.setMax(100);
+                zoomSeekBar.setProgress((int) ((cameraInfo.getZoomState().getValue().getZoomRatio()
+                        - cameraInfo.getZoomState().getValue().getMinZoomRatio())
+                        / (cameraInfo.getZoomState().getValue().getMaxZoomRatio()
+                        - cameraInfo.getZoomState().getValue().getMinZoomRatio()) * 100));
+
             } catch (ExecutionException | InterruptedException e) {
                 Log.e("CameraX", "Error starting camera", e);
             }
         }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void startCountdown() {
+        countdownTextView.setText("3");
+        countdownTextView.setVisibility(TextView.VISIBLE);
+
+        new CountDownTimer(3000, 1000) {
+
+            public void onTick(long millisUntilFinished) {
+                countdownTextView.setText(String.valueOf(millisUntilFinished / 1000));
+            }
+
+            public void onFinish() {
+                countdownTextView.setVisibility(TextView.GONE);
+                takePhoto();
+            }
+
+        }.start();
     }
 
     private void takePhoto() {
