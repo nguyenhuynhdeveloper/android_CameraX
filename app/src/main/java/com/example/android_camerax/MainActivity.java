@@ -14,6 +14,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraControl;
 import androidx.camera.core.CameraInfo;
@@ -21,8 +22,11 @@ import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.Preview;
+
 import androidx.camera.lifecycle.ProcessCameraProvider;
+
 import androidx.camera.view.PreviewView;
+
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -47,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     private CameraInfo cameraInfo;
     private CameraSelector cameraSelector;
     private ProcessCameraProvider cameraProvider;
+
     private ExecutorService cameraExecutor;
 
     private boolean isUsingFrontCamera = false;
@@ -67,18 +72,19 @@ public class MainActivity extends AppCompatActivity {
         zoomSeekBar = findViewById(R.id.zoomSeekBar);
 
         if (allPermissionsGranted()) {
-            startCamera();
+            startCamera(); // Khi đã có đủ quyền thì mở camera lên
         } else {
-            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
+            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);  // Hỏi quyền khi chưa có quyền
         }
 
-        captureButton.setOnClickListener(v -> startCountdown());
+        captureButton.setOnClickListener(v -> startCountdown());   // Khi click chụp ảnh thì sẽ bắt đàu đếm ngược thời gian
 
         switchCameraButton.setOnClickListener(v -> {
             isUsingFrontCamera = !isUsingFrontCamera;
             startCamera();
         });
 
+        // Lắng nghe sự vuốt  slider thay đổi đông phơi sáng
         exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -97,6 +103,8 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
+
+        // Lắng nghe sự vuốt  slider thay đổi tỷ lệ Zoom của máy ảnh
         zoomSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -115,6 +123,7 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
+        // Tạo biến quản lý việc Pinch to Zoom
         scaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
@@ -128,20 +137,21 @@ public class MainActivity extends AppCompatActivity {
                     newZoomRatio = Math.max(minZoomRatio, Math.min(newZoomRatio, maxZoomRatio));
 
                     cameraControl.setZoomRatio(newZoomRatio);
-                    zoomSeekBar.setProgress((int) ((newZoomRatio - minZoomRatio) / (maxZoomRatio - minZoomRatio) * 100));
+                    zoomSeekBar.setProgress((int) ((newZoomRatio - minZoomRatio) / (maxZoomRatio - minZoomRatio) * 100));  // Thay đổi hiển thị của Slider tương ứng với độ Zoom đã Zoom
                 }
                 return true;
             }
         });
 
         previewView.setOnTouchListener((v, event) -> {
-            scaleGestureDetector.onTouchEvent(event);
+            scaleGestureDetector.onTouchEvent(event);   // Đưa biến _scaleGestureDetector vào sự lắng nghe của Preview
             return true;
         });
 
-        cameraExecutor = Executors.newSingleThreadExecutor();
+        cameraExecutor = Executors.newSingleThreadExecutor();  // Tạo ra 1 thread pool với duy nhất 1 thread thực hiện các tác vụ tuần tự
     }
 
+    // Hàm bắt đầu khởi động camera lên
     private void startCamera() {
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(this);
 
@@ -172,9 +182,12 @@ public class MainActivity extends AppCompatActivity {
             } catch (ExecutionException | InterruptedException e) {
                 Log.e("CameraX", "Error starting camera", e);
             }
-        }, ContextCompat.getMainExecutor(this));
+        },
+                ContextCompat.getMainExecutor(this)
+        );
     }
 
+    // Hàm bắt đầu đếm ngược : bộ đếm thời gian chụp
     private void startCountdown() {
         countdownTextView.setText("3");
         countdownTextView.setVisibility(TextView.VISIBLE);
@@ -193,6 +206,7 @@ public class MainActivity extends AppCompatActivity {
         }.start();
     }
 
+    // Hàm chụp ảnh trên camera rồi lưu vào máy
     private void takePhoto() {
         if (imageCapture == null) {
             return;
@@ -220,6 +234,7 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
+    // Hàm chỉ định vị trí lưu ảnh vào trong bộ nhớ
     private File getOutputDirectory() {
         File mediaDir = getExternalMediaDirs()[0];
         if (mediaDir != null && mediaDir.exists()) {
@@ -229,6 +244,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Hàm Check quyền truy cập camera
     private boolean allPermissionsGranted() {
         for (String permission : REQUIRED_PERMISSIONS) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -238,6 +254,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    // Hàm hỏi quyền camera
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
@@ -250,6 +267,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Khi Activity bị huỷ phải tắt camera đi
     @Override
     protected void onDestroy() {
         super.onDestroy();
