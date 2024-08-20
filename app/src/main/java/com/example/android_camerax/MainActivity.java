@@ -3,6 +3,7 @@ package com.example.android_camerax;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.util.Log;
@@ -39,7 +40,22 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity {
+
+import android.content.Context;
+
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+
+import android.widget.RelativeLayout;
+
+
+
+public class MainActivity extends AppCompatActivity implements SensorEventListener {
+
+    private int currentOrientation = Configuration.ORIENTATION_UNDEFINED;
+
 
     private static final int REQUEST_CODE_PERMISSIONS = 10;
     private static final String[] REQUIRED_PERMISSIONS = new String[]{Manifest.permission.CAMERA};
@@ -59,6 +75,14 @@ public class MainActivity extends AppCompatActivity {
     private TextView countdownTextView;
     private SeekBar zoomSeekBar;
 
+    Button captureButton;
+
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+
+    private boolean isPortrait = true;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -67,8 +91,8 @@ public class MainActivity extends AppCompatActivity {
         previewView = findViewById(R.id.previewView);
         Button captureButton = findViewById(R.id.captureButton);
         Button switchCameraButton = findViewById(R.id.switchCameraButton);
-        SeekBar exposureSeekBar = findViewById(R.id.exposureSeekBar);
-        countdownTextView = findViewById(R.id.countdownTextView);
+//        SeekBar exposureSeekBar = findViewById(R.id.exposureSeekBar);
+//        countdownTextView = findViewById(R.id.countdownTextView);
         zoomSeekBar = findViewById(R.id.zoomSeekBar);
 
         if (allPermissionsGranted()) {
@@ -82,25 +106,6 @@ public class MainActivity extends AppCompatActivity {
         switchCameraButton.setOnClickListener(v -> {
             isUsingFrontCamera = !isUsingFrontCamera;
             startCamera();
-        });
-
-        // Lắng nghe sự vuốt  slider thay đổi đông phơi sáng
-        exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (cameraControl != null) {
-                    float minValue = cameraInfo.getExposureState().getExposureCompensationRange().getLower();
-                    float maxValue = cameraInfo.getExposureState().getExposureCompensationRange().getUpper();
-                    int exposureIndex = (int) ((progress / 100.0f) * (maxValue - minValue) + minValue);
-                    cameraControl.setExposureCompensationIndex(exposureIndex);
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
 
@@ -149,7 +154,19 @@ public class MainActivity extends AppCompatActivity {
         });
 
         cameraExecutor = Executors.newSingleThreadExecutor();  // Tạo ra 1 thread pool với duy nhất 1 thread thực hiện các tác vụ tuần tự
+
+        // Khởi tạo SensorManager và cảm biến gia tốc
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+        // Đăng ký SensorEventListener
+        if (accelerometer != null) {
+            sensorManager.registerListener((SensorEventListener) this, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        }
     }
+
+
+
 
     // Hàm bắt đầu khởi động camera lên
     private void startCamera() {
@@ -267,10 +284,61 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            float x = event.values[0];
+            float y = event.values[1];
+
+            // Xác định hướng của thiết bị
+            boolean newIsPortrait = Math.abs(x) < Math.abs(y);
+
+            if (newIsPortrait != isPortrait) {
+                isPortrait = newIsPortrait;
+//                adjustCaptureButtonLayout();
+            }
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+    }
+
+//    @Override
+//    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+//        // Không cần xử lý cho accuracy changes
+//    }
+
+    private void adjustCaptureButtonLayout() {
+        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) captureButton.getLayoutParams();
+
+        if (isPortrait) {
+            // Đặt nút chụp ảnh vào góc dưới giữa cho chế độ portrait
+            params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE);
+            params.addRule(RelativeLayout.CENTER_HORIZONTAL, RelativeLayout.TRUE);
+            params.removeRule(RelativeLayout.ALIGN_PARENT_LEFT);
+            params.removeRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        } else {
+            // Đặt nút chụp ảnh vào góc dưới bên trái cho chế độ landscape
+            params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE);
+            params.addRule(RelativeLayout.ALIGN_PARENT_LEFT, RelativeLayout.TRUE);
+            params.removeRule(RelativeLayout.CENTER_HORIZONTAL);
+            params.removeRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        }
+
+        captureButton.setLayoutParams(params);
+    }
+
     // Khi Activity bị huỷ phải tắt camera đi
     @Override
     protected void onDestroy() {
         super.onDestroy();
         cameraExecutor.shutdown();
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
+
     }
 }
