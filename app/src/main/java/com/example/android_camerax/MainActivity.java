@@ -40,7 +40,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-
 import android.content.Context;
 
 import android.hardware.Sensor;
@@ -75,11 +74,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private TextView countdownTextView;
     private SeekBar zoomSeekBar;
 
-    Button captureButton;
+
 
     private SensorManager sensorManager;
     private Sensor accelerometer;
-
+    Button captureButton;
     private boolean isPortrait = true;
 
 
@@ -89,7 +88,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         setContentView(R.layout.activity_main);
 
         previewView = findViewById(R.id.previewView);
-        Button captureButton = findViewById(R.id.captureButton);
+         captureButton = findViewById(R.id.captureButton);
+
+        // Kiểm tra nếu captureButton là null
+        if (captureButton == null) {
+            throw new NullPointerException("captureButton không được khởi tạo. Kiểm tra lại ID trong XML.");
+        }
+
+        // Khởi tạo SensorManager và cảm biến gia tốc
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+        // Đăng ký SensorEventListener
+        if (accelerometer != null) {
+//            sensorManager.registerListener((SensorEventListener) this, accelerometer, SensorManager.SENSOR_DELAY_UI);
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        }
+
+
+
         Button switchCameraButton = findViewById(R.id.switchCameraButton);
 //        SeekBar exposureSeekBar = findViewById(R.id.exposureSeekBar);
 //        countdownTextView = findViewById(R.id.countdownTextView);
@@ -155,14 +172,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         cameraExecutor = Executors.newSingleThreadExecutor();  // Tạo ra 1 thread pool với duy nhất 1 thread thực hiện các tác vụ tuần tự
 
-        // Khởi tạo SensorManager và cảm biến gia tốc
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
-        // Đăng ký SensorEventListener
-        if (accelerometer != null) {
-            sensorManager.registerListener((SensorEventListener) this, accelerometer, SensorManager.SENSOR_DELAY_UI);
-        }
     }
 
 
@@ -293,10 +303,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             // Xác định hướng của thiết bị
             boolean newIsPortrait = Math.abs(x) < Math.abs(y);
+//            Log.d("TAG X", String.valueOf(Math.abs(x)));
+//            Log.d("TAG Y", String.valueOf(Math.abs(y)));
 
             if (newIsPortrait != isPortrait) {
+                Log.d("TAG_isPortrait", String.valueOf(isPortrait));
                 isPortrait = newIsPortrait;
-//                adjustCaptureButtonLayout();
+
+                Log.d("TAG_newIsPortrait", String.valueOf(newIsPortrait));
+                adjustCaptureButtonLayout();
             }
         }
     }
@@ -306,12 +321,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     }
 
-//    @Override
-//    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-//        // Không cần xử lý cho accuracy changes
-//    }
 
     private void adjustCaptureButtonLayout() {
+
+        if (captureButton == null) {
+            Log.d("TAG_captureButton", String.valueOf(captureButton));
+            return;
+        }
+        Log.d("TAG_adjustCaptureButtonLayout", "adjustCaptureButtonLayout run ");
+//        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) captureButton.getLayoutParams();
         RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) captureButton.getLayoutParams();
 
         if (isPortrait) {
