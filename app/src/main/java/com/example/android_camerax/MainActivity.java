@@ -26,6 +26,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import androidx.camera.camera2.interop.Camera2CameraInfo;
 
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.impl.UseCaseConfigFactory;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -67,6 +72,60 @@ public class MainActivity extends AppCompatActivity {
         binding.buttonZoom2x.setOnClickListener(v -> setZoomRatio(2.0f));
     }
 
+
+    private void startCamera() {
+        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(this);
+
+        cameraProviderFuture.addListener(() -> {
+            try {
+                cameraProvider = cameraProviderFuture.get();
+                bindCameraUseCase(CameraSelector.DEFAULT_BACK_CAMERA);
+            } catch (ExecutionException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        }, ContextCompat.getMainExecutor(this));
+    }
+
+
+
+    private void setZoomRatio(float ratio) {
+        if (camera != null) {
+            camera.getCameraControl().setZoomRatio(ratio);
+        }
+    }
+
+    private void switchToWideAngleLens() {
+        if (wideAngleCameraId != null) {
+            // Sử dụng Camera2Interop để chuyển đổi sang camera góc rộng
+            CameraSelector wideAngleSelector = new CameraSelector.Builder()
+                    .addCameraFilter(cameraInfos -> {
+                        List<CameraInfo> filteredList = new ArrayList<>();
+                        for (CameraInfo cameraInfo : cameraInfos) {
+                            String cameraId = Camera2CameraInfo.from(cameraInfo).getCameraId();
+                            if (cameraId.equals(wideAngleCameraId)) {
+                                filteredList.add(cameraInfo);
+                            }
+                        }
+                        return filteredList;
+                    })
+                    .build();
+
+            bindCameraUseCase(wideAngleSelector);
+        }
+    }
+    private void bindCameraUseCase(@NonNull CameraSelector cameraSelector) {
+        // Khởi tạo preview và liên kết với CameraX
+        Preview preview = new Preview.Builder().build();
+        preview.setSurfaceProvider(binding.previewView.getSurfaceProvider());
+
+        try {
+            cameraProvider.unbindAll();
+            camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private boolean checkWideAngleCamera() {
         CameraManager cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
 
@@ -91,60 +150,6 @@ public class MainActivity extends AppCompatActivity {
             Log.e("CameraXDemo", "Cannot access camera: " + e.getMessage());
         }
         return false;
-    }
-
-    private void startCamera() {
-        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-
-        cameraProviderFuture.addListener(() -> {
-            try {
-                cameraProvider = cameraProviderFuture.get();
-                bindCameraUseCase(CameraSelector.DEFAULT_BACK_CAMERA);
-            } catch (ExecutionException | InterruptedException e) {
-                e.printStackTrace();
-            }
-        }, ContextCompat.getMainExecutor(this));
-    }
-
-    private void bindCameraUseCase(@NonNull CameraSelector cameraSelector) {
-        Preview preview = new Preview.Builder().build();
-        preview.setSurfaceProvider(binding.previewView.getSurfaceProvider());
-
-        try {
-            cameraProvider.unbindAll();
-            camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setZoomRatio(float ratio) {
-        if (camera != null) {
-            camera.getCameraControl().setZoomRatio(ratio);
-        }
-    }
-
-    private void switchToWideAngleLens() {
-        if (wideAngleCameraId != null) {
-            CameraSelector wideAngleSelector = new CameraSelector.Builder()
-                    .addCameraFilter(cameraInfos -> {
-                        List<CameraInfo> filteredList = new ArrayList<>();
-                        for (CameraInfo cameraInfo : cameraInfos) {
-                            try {
-                                String cameraId = Camera2CameraInfo.from(cameraInfo).getCameraId();
-                                if (cameraId.equals(wideAngleCameraId)) {
-                                    filteredList.add(cameraInfo);
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        return filteredList;
-                    })
-                    .build();
-
-            bindCameraUseCase(wideAngleSelector);
-        }
     }
 
 
