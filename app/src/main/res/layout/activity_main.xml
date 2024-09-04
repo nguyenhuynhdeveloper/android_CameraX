@@ -22,7 +22,7 @@
         android:layout_marginBottom="16dp">
 
         <Button
-            android:id="@+id/button_wide_angle"
+            android:id="@+id/buttonZoom0_5x"
             android:layout_width="64dp"
             android:layout_height="64dp"
             android:text="0.5X"
