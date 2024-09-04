@@ -1,62 +1,50 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <Button
-        android:id="@+id/captureButton"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Capture"
-        android:layout_centerHorizontal="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="32dp"/>
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginBottom="16dp">
 
-    <Button
-        android:id="@+id/switchCameraButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Switch Camera"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"/>
+        <Button
+            android:id="@+id/button_wide_angle"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:text="0.5X"
+            android:background="@drawable/circle_button_background"
+            android:textColor="@android:color/white" />
 
-    <TextView
-        android:id="@+id/countdownTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:textSize="48sp"
-        android:textColor="@android:color/white"
-        android:visibility="gone" />
+        <Button
+            android:id="@+id/button_zoom_1x"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:text="1X"
+            android:background="@drawable/circle_button_background"
+            android:textColor="@android:color/white"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"/>
 
-
-    <SeekBar
-        android:id="@+id/exposureSeekBar"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:max="100"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="32dp"
-        android:layout_marginStart="16dp" />
-
-    <SeekBar
-        android:id="@+id/zoomSeekBar"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:max="100"
-        android:progress="50"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="64dp"
-        android:layout_marginStart="16dp" />
-
-</RelativeLayout>
+        <Button
+            android:id="@+id/button_zoom_2x"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:text="2X"
+            android:background="@drawable/circle_button_background"
+            android:textColor="@android:color/white" />
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
