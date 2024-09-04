@@ -1,3 +1,5 @@
+package com.example.android_camerax;
+
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.CameraAccessException;
