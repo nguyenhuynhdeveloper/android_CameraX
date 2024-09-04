@@ -96,49 +96,40 @@ public class MainActivity extends AppCompatActivity {
 
     private void switchToWideAngleLens() {
         if (wideAngleCameraId != null) {
-            // Sử dụng Camera2Interop để chuyển đổi sang camera góc rộng
             CameraSelector wideAngleSelector = new CameraSelector.Builder()
-                    .addCameraFilter(cameraInfos -> {
-                        List<CameraInfo> filteredList = new ArrayList<>();
-                        for (CameraInfo cameraInfo : cameraInfos) {
-                            String cameraId = Camera2CameraInfo.from(cameraInfo).getCameraId();
-                            if (cameraId.equals(wideAngleCameraId)) {
-                                filteredList.add(cameraInfo);
-                            }
-                        }
-                        return filteredList;
-                    })
+                    .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                     .build();
 
+            // Bind the camera use case with the new camera selector
             bindCameraUseCase(wideAngleSelector);
         }
     }
+
     private void bindCameraUseCase(@NonNull CameraSelector cameraSelector) {
-        // Khởi tạo preview và liên kết với CameraX
         Preview preview = new Preview.Builder().build();
         preview.setSurfaceProvider(binding.previewView.getSurfaceProvider());
 
         try {
             cameraProvider.unbindAll();
-            camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview);
+            cameraProvider.bindToLifecycle(this, cameraSelector, preview);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
+
+
     private boolean checkWideAngleCamera() {
         CameraManager cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
-
         try {
             for (String cameraId : cameraManager.getCameraIdList()) {
                 CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
-
                 if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
+                    // Check if it is a wide-angle lens by looking at the focal length and sensor size
                     float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
                     SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
 
                     if (focalLengths != null && sensorSize != null) {
-                        // Check if it's a wide-angle lens
                         if (focalLengths.length > 0 && (sensorSize.getWidth() / focalLengths[0]) > 1.0) {
                             wideAngleCameraId = cameraId;
                             return true;
