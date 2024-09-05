@@ -1,6 +1,5 @@
 package com.example.android_camerax;
 
-
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -37,7 +36,8 @@ public class MainActivity extends AppCompatActivity {
     private CameraManager cameraManager;
     private String wideCameraId;
     private String normalCameraId;
-    private boolean useWideCamera = false;
+    private String teleCameraId;
+    private String frontCameraId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,34 +45,61 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         textureView = findViewById(R.id.textureView);
-        Button buttonSwitchCamera = findViewById(R.id.buttonSwitchCamera);
+        Button buttonWideCamera = findViewById(R.id.buttonWideCamera);
+        Button buttonNormalCamera = findViewById(R.id.buttonNormalCamera);
+        Button buttonTeleCamera = findViewById(R.id.buttonTeleCamera);
+        Button buttonFrontCamera = findViewById(R.id.buttonFrontCamera);
 
         cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
 
         textureView.setSurfaceTextureListener(textureListener);
 
-        buttonSwitchCamera.setOnClickListener(new View.OnClickListener() {
+        buttonWideCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                useWideCamera = !useWideCamera;
-                closeCamera();
-                openCamera();
+                openCamera(wideCameraId);
+            }
+        });
+
+        buttonNormalCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openCamera(normalCameraId);
+            }
+        });
+
+        buttonTeleCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openCamera(teleCameraId);
+            }
+        });
+
+        buttonFrontCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openCamera(frontCameraId);
             }
         });
 
         try {
             for (String cameraId : cameraManager.getCameraIdList()) {
-
-                Log.d("WideAngleCamera","cameraId: "+ cameraId );
-
                 CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+                int lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
                 float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
 
-                Log.d("WideAngleCamera","focalLengths: "+ Arrays.toString(focalLengths));
+                Log.d("WideAngle", "cameraId: " + cameraId);
+                Log.d("WideAngle", "focalLengths: " + Arrays.toString(focalLengths));
+                Log.d("WideAngle", "lensFacing: " + lensFacing);
+//                Log.d("WideAngle", "focalLengths[0]: " + focalLengths[0]);
 
-                if (focalLengths != null && focalLengths.length > 0) {
+                if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
+                    frontCameraId = cameraId; // Camera trước
+                } else if (focalLengths != null && focalLengths.length > 0) {
                     if (focalLengths[0] < 3) {
                         wideCameraId = cameraId; // Camera góc rộng
+                    } else if (focalLengths[0] > 4.0) {
+                        teleCameraId = cameraId; // Camera tele
                     } else {
                         normalCameraId = cameraId; // Camera thường
                     }
@@ -86,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            openCamera();
+            openCamera(wideCameraId); // Mặc định mở camera thường
         }
 
         @Override
@@ -101,8 +128,7 @@ public class MainActivity extends AppCompatActivity {
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
     };
 
-    private void openCamera() {
-        cameraId = useWideCamera ? wideCameraId : normalCameraId;
+    private void openCamera(String cameraId) {
         try {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                 cameraManager.openCamera(cameraId, stateCallback, null);
@@ -189,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (textureView.isAvailable()) {
-            openCamera();
+            openCamera(normalCameraId); // Mặc định mở camera thường
         } else {
             textureView.setSurfaceTextureListener(textureListener);
         }
