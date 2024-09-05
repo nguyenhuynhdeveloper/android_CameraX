@@ -1,170 +1,148 @@
+package com.example.android_camerax;
+
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraManager;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.SizeF;
 import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
+import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.Preview;
+import androidx.camera.core.ZoomState;
 import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import com.example.android_camerax.databinding.ActivityMainBinding;
+
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import androidx.camera.camera2.interop.Camera2CameraInfo;
+import androidx.camera.camera2.interop.Camera2Interop;
+import androidx.camera.core.impl.CameraInfoInternal;
 import androidx.camera.camera2.interop.Camera2CameraInfo;
 
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.impl.UseCaseConfigFactory;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraManager;
+import androidx.camera.core.CameraInfo;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
+//import androidx.lifecycle.LiveData;
+//import androidx.lifecycle.Observer;
 
 
 public class MainActivity extends AppCompatActivity {
+    private static final int REQUEST_CODE_PERMISSIONS = 10;
+    private static final String[] REQUIRED_PERMISSIONS = new String[]{Manifest.permission.CAMERA};
 
-    private static final int REQUEST_CAMERA_PERMISSION = 1001;
-    private ActivityMainBinding binding;
-    private ProcessCameraProvider cameraProvider;
+    private PreviewView previewView;
     private Camera camera;
-    private ExecutorService cameraExecutor;
-    private String wideAngleCameraId;
+    private ProcessCameraProvider cameraProvider;
+    private float minZoom;
+    private float maxZoom;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        setContentView(R.layout.activity_main);
 
-        cameraExecutor = Executors.newSingleThreadExecutor();
+        previewView = findViewById(R.id.previewView);
+        Button buttonWideAngle = findViewById(R.id.buttonWideAngle);
+        Button buttonNormal = findViewById(R.id.buttonNormal);
 
-        // Kiểm tra quyền truy cập camera
         if (allPermissionsGranted()) {
-            initializeCamera();
+            startCamera(CameraSelector.LENS_FACING_BACK, 1.0f, false);
         } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
-        }
-    }
-
-    private void initializeCamera() {
-        // Kiểm tra và hiển thị hoặc ẩn nút 0.5X
-        if (checkWideAngleCamera()) {
-            binding.buttonZoom05x.setVisibility(View.VISIBLE);
-        } else {
-            binding.buttonZoom05x.setVisibility(View.GONE);
+            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
         }
 
-        startCamera();
+        buttonWideAngle.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startCamera(CameraSelector.LENS_FACING_BACK, 0.5f, true);
+            }
+        });
 
-        binding.buttonZoom05x.setOnClickListener(v -> switchToWideAngleLens());
-        binding.buttonZoom1x.setOnClickListener(v -> setZoomRatio(1.0f));
-        binding.buttonZoom2x.setOnClickListener(v -> setZoomRatio(2.0f));
+        buttonNormal.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startCamera(CameraSelector.LENS_FACING_BACK, 1.0f, false);
+            }
+        });
     }
 
-
-    private void startCamera() {
+    private void startCamera(int lensFacing, float zoomRatio, boolean useWideAngle) {
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider = cameraProviderFuture.get();
-                bindCameraUseCase(CameraSelector.DEFAULT_BACK_CAMERA);
+                bindPreview(cameraProvider, lensFacing, zoomRatio, useWideAngle);
             } catch (ExecutionException | InterruptedException e) {
-                e.printStackTrace();
+                // Handle any errors (including cancellation) here.
             }
         }, ContextCompat.getMainExecutor(this));
     }
 
-
-
-    private void setZoomRatio(float ratio) {
-        if (camera != null) {
-            camera.getCameraControl().setZoomRatio(ratio);
-        }
-    }
-
-    private void switchToWideAngleLens() {
-        if (wideAngleCameraId != null) {
-            CameraSelector wideAngleSelector = new CameraSelector.Builder()
-                    .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                    .build();
-
-            // Bind the camera use case with the new camera selector
-            bindCameraUseCase(wideAngleSelector);
-        }
-    }
-
-    private void bindCameraUseCase(@NonNull CameraSelector cameraSelector) {
+    private void bindPreview(@NonNull ProcessCameraProvider cameraProvider, int lensFacing, float zoomRatio, boolean useWideAngle) {
         Preview preview = new Preview.Builder().build();
-        preview.setSurfaceProvider(binding.previewView.getSurfaceProvider());
+        CameraSelector cameraSelector;
 
-        try {
-            cameraProvider.unbindAll();
-            cameraProvider.bindToLifecycle(this, cameraSelector, preview);
-        } catch (Exception e) {
-            e.printStackTrace();
+      {
+            cameraSelector = new CameraSelector.Builder()
+                    .requireLensFacing(lensFacing)
+                    .build();
         }
-    }
 
 
 
-    private boolean checkWideAngleCamera() {
-        CameraManager cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
-        try {
-            for (String cameraId : cameraManager.getCameraIdList()) {
-                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
-                if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
-                    // Check if it is a wide-angle lens by looking at the focal length and sensor size
-                    float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
-                    SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+        cameraProvider.unbindAll();
+        camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview);
+        preview.setSurfaceProvider(previewView.getSurfaceProvider());
+        camera.getCameraControl().setZoomRatio(zoomRatio);
 
-                    if (focalLengths != null && sensorSize != null) {
-                        if (focalLengths.length > 0 && (sensorSize.getWidth() / focalLengths[0]) > 1.0) {
-                            wideAngleCameraId = cameraId;
-                            return true;
-                        }
-                    }
-                }
+        // Lấy giá trị zoom tối thiểu và tối đa
+        LiveData<ZoomState> zoomStateLiveData = camera.getCameraInfo().getZoomState();
+        zoomStateLiveData.observe(this, new Observer<ZoomState>() {
+            @Override
+            public void onChanged(ZoomState zoomState) {
+                minZoom = zoomState.getMinZoomRatio();
+                maxZoom = zoomState.getMaxZoomRatio();
+
+                // Log hoặc hiển thị giá trị
+                Log.d("CameraXApp", "Min Zoom: " + minZoom);
+                Log.d("CameraXApp", "Max Zoom: " + maxZoom);
             }
-        } catch (CameraAccessException e) {
-            Log.e("CameraXDemo", "Cannot access camera: " + e.getMessage());
-        }
-        return false;
+        });
     }
+
 
 
     private boolean allPermissionsGranted() {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+        for (String permission : REQUIRED_PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                initializeCamera();
+                startCamera(CameraSelector.LENS_FACING_BACK, 1.0f, false);
             } else {
-                // Quyền bị từ chối
-                Log.e("CameraXDemo", "Quyền truy cập camera bị từ chối");
+                Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show();
+                finish();
             }
         }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        cameraExecutor.shutdown();
     }
 }

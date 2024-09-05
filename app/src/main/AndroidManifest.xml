@@ -3,7 +3,9 @@
     package="com.example.android_camerax">
 
 
-
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="true" />
     <uses-permission android:name="android.permission.CAMERA" />
     <application
         android:allowBackup="true"
@@ -13,7 +15,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Android_CameraX">
         <activity
-            android:name=".MainActivity"
+            android:name="MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
