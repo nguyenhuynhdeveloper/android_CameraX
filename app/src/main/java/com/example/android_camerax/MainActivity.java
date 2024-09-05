@@ -1,5 +1,6 @@
 package com.example.android_camerax;
 
+
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -11,7 +12,6 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.TotalCaptureResult;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
@@ -38,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private String normalCameraId;
     private String teleCameraId;
     private String frontCameraId;
+    private  String TAG = "Wide_Angle_Camera";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,28 +58,28 @@ public class MainActivity extends AppCompatActivity {
         buttonWideCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openCamera("0");
+                switchCamera("0");
             }
         });
 
         buttonNormalCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openCamera("1");
+                switchCamera("1");
             }
         });
 
         buttonTeleCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openCamera("2");
+                switchCamera("2");
             }
         });
 
         buttonFrontCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openCamera("3");
+                switchCamera("3");
             }
         });
 
@@ -88,15 +89,14 @@ public class MainActivity extends AppCompatActivity {
                 int lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
                 float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
 
-                Log.d("wideAngleCamera", "cameraId: " + cameraId);
-                Log.d("wideAngleCamera", "focalLengths: " + Arrays.toString(focalLengths));
-                Log.d("wideAngleCamera", "lensFacing: " + lensFacing);
-//                Log.d("WideAngle", "focalLengths[0]: " + focalLengths[0]);
+                Log.d(TAG, "cameraId: " +cameraId);
+                Log.d(TAG, "lensFacing: " +lensFacing);
+                Log.d(TAG, "focalLengths: " + Arrays.toString(focalLengths));
 
                 if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
                     frontCameraId = cameraId; // Camera trước
                 } else if (focalLengths != null && focalLengths.length > 0) {
-                    if (focalLengths[0] < 3) {
+                    if (focalLengths[0] < 2.0) {
                         wideCameraId = cameraId; // Camera góc rộng
                     } else if (focalLengths[0] > 4.0) {
                         teleCameraId = cameraId; // Camera tele
@@ -113,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            openCamera(wideCameraId); // Mặc định mở camera thường
+            openCamera(normalCameraId); // Mặc định mở camera thường
         }
 
         @Override
@@ -127,6 +127,11 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
     };
+
+    private void switchCamera(String newCameraId) {
+        closeCamera();
+        openCamera(newCameraId);
+    }
 
     private void openCamera(String cameraId) {
         try {
