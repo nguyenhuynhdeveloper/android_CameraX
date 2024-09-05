@@ -1,6 +1,7 @@
 package com.example.android_camerax;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
@@ -22,6 +23,7 @@ import com.example.android_camerax.databinding.ActivityMainBinding;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -42,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private Camera camera;
     private ExecutorService cameraExecutor;
     private String wideAngleCameraId;
+    private String TAG = "wideAngleCamera";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,26 +125,61 @@ public class MainActivity extends AppCompatActivity {
 
 
     private boolean checkWideAngleCamera() {
-        CameraManager cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
-        try {
-            for (String cameraId : cameraManager.getCameraIdList()) {
-                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
-                if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
-                    // Check if it is a wide-angle lens by looking at the focal length and sensor size
-                    float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
-                    SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+        CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        int backCameraCount = 0;
 
-                    if (focalLengths != null && sensorSize != null) {
-                        if (focalLengths.length > 0 && (sensorSize.getWidth() / focalLengths[0]) > 1.0) {
-                            wideAngleCameraId = cameraId;
-                            return true;
-                        }
-                    }
+        try {
+            String[] cameraIdList = cameraManager.getCameraIdList();
+            Log.d(TAG , "cameraIdList : " + Arrays.toString(cameraIdList));
+
+            for (String cameraId : cameraIdList) {
+                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+
+                Log.d(TAG , "characteristics : " +characteristics.toString() );
+                Log.d(TAG , "characteristics getKeys: " +characteristics.getKeys());
+
+                // Kiểm tra camera có phải là camera sau hay không
+                Integer lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
+
+                if (lensFacing != null && lensFacing == CameraCharacteristics.LENS_FACING_BACK) {
+                    backCameraCount++;
                 }
             }
         } catch (CameraAccessException e) {
-            Log.e("CameraXDemo", "Cannot access camera: " + e.getMessage());
+            e.printStackTrace();
         }
+
+
+//        CameraManager cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
+//        try {
+//
+//            Log.d(TAG , "cameraManager.getCameraIdList() : " + Arrays.toString(cameraManager.getCameraIdList()));
+//
+//            Log.d(TAG , "cameraManager.getConcurrentCameraIds() : " +cameraManager.getConcurrentCameraIds() );
+//            for (String cameraId : cameraManager.getCameraIdList()) {
+//            Log.d(TAG , "cameraId" +cameraId);
+//                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+//
+//                Log.d(TAG , "characteristics " +characteristics.toString() );
+//                Log.d(TAG , "characteristics " +characteristics );
+//
+//                if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
+//                    // Check if it is a wide-angle lens by looking at the focal length and sensor size
+//                    float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+//                    SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+//
+//                    if (focalLengths != null && sensorSize != null) {
+//                        if (focalLengths.length > 0 && (sensorSize.getWidth() / focalLengths[0]) > 1.0) {
+//                            wideAngleCameraId = cameraId;
+//                            return true;
+//                        }
+//                    }
+//                }
+//
+//            }
+//        } catch (CameraAccessException e) {
+//            Log.e("CameraXDemo", "Cannot access camera: " + e.getMessage());
+//        }
         return false;
     }
 
