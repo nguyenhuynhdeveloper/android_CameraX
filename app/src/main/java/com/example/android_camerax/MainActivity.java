@@ -57,28 +57,28 @@ public class MainActivity extends AppCompatActivity {
         buttonWideCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openCamera(wideCameraId);
+                openCamera("0");
             }
         });
 
         buttonNormalCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openCamera(normalCameraId);
+                openCamera("1");
             }
         });
 
         buttonTeleCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openCamera(teleCameraId);
+                openCamera("2");
             }
         });
 
         buttonFrontCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openCamera(frontCameraId);
+                openCamera("3");
             }
         });
 
@@ -88,9 +88,9 @@ public class MainActivity extends AppCompatActivity {
                 int lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
                 float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
 
-                Log.d("WideAngle", "cameraId: " + cameraId);
-                Log.d("WideAngle", "focalLengths: " + Arrays.toString(focalLengths));
-                Log.d("WideAngle", "lensFacing: " + lensFacing);
+                Log.d("wideAngleCamera", "cameraId: " + cameraId);
+                Log.d("wideAngleCamera", "focalLengths: " + Arrays.toString(focalLengths));
+                Log.d("wideAngleCamera", "lensFacing: " + lensFacing);
 //                Log.d("WideAngle", "focalLengths[0]: " + focalLengths[0]);
 
                 if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
