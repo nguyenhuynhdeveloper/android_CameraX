@@ -1,210 +1,207 @@
 package com.example.android_camerax;
 
+
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.TotalCaptureResult;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.SizeF;
+import android.util.Size;
+import android.view.Surface;
+import android.view.TextureView;
 import android.view.View;
+import android.widget.Button;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.Camera;
-import androidx.camera.core.CameraInfo;
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.Preview;
-import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import com.example.android_camerax.databinding.ActivityMainBinding;
-import com.google.common.util.concurrent.ListenableFuture;
-
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import androidx.camera.camera2.interop.Camera2CameraInfo;
-
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.impl.UseCaseConfigFactory;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraManager;
-
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int REQUEST_CAMERA_PERMISSION = 1001;
-    private ActivityMainBinding binding;
-    private ProcessCameraProvider cameraProvider;
-    private Camera camera;
-    private ExecutorService cameraExecutor;
-    private String wideAngleCameraId;
-    private String TAG = "wideAngleCamera";
+    private static final int REQUEST_CAMERA_PERMISSION = 200;
+    private TextureView textureView;
+    private CameraDevice cameraDevice;
+    private CameraCaptureSession cameraCaptureSessions;
+    private CaptureRequest.Builder captureRequestBuilder;
+    private String cameraId;
+    private CameraManager cameraManager;
+    private String wideCameraId;
+    private String normalCameraId;
+    private boolean useWideCamera = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        setContentView(R.layout.activity_main);
 
-        cameraExecutor = Executors.newSingleThreadExecutor();
+        textureView = findViewById(R.id.textureView);
+        Button buttonSwitchCamera = findViewById(R.id.buttonSwitchCamera);
 
-        // Kiểm tra quyền truy cập camera
-        if (allPermissionsGranted()) {
-            initializeCamera();
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
-        }
-    }
+        cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
 
-    private void initializeCamera() {
-        // Kiểm tra và hiển thị hoặc ẩn nút 0.5X
-        if (checkWideAngleCamera()) {
-            binding.buttonZoom05x.setVisibility(View.VISIBLE);
-        } else {
-            binding.buttonZoom05x.setVisibility(View.GONE);
-        }
+        textureView.setSurfaceTextureListener(textureListener);
 
-        startCamera();
-
-        binding.buttonZoom05x.setOnClickListener(v -> switchToWideAngleLens());
-        binding.buttonZoom1x.setOnClickListener(v -> setZoomRatio(1.0f));
-        binding.buttonZoom2x.setOnClickListener(v -> setZoomRatio(2.0f));
-    }
-
-
-    private void startCamera() {
-        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-
-        cameraProviderFuture.addListener(() -> {
-            try {
-                cameraProvider = cameraProviderFuture.get();
-                bindCameraUseCase(CameraSelector.DEFAULT_BACK_CAMERA);
-            } catch (ExecutionException | InterruptedException e) {
-                e.printStackTrace();
+        buttonSwitchCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                useWideCamera = !useWideCamera;
+                closeCamera();
+                openCamera();
             }
-        }, ContextCompat.getMainExecutor(this));
-    }
-
-
-
-    private void setZoomRatio(float ratio) {
-        if (camera != null) {
-            camera.getCameraControl().setZoomRatio(ratio);
-        }
-    }
-
-    private void switchToWideAngleLens() {
-        if (wideAngleCameraId != null) {
-            CameraSelector wideAngleSelector = new CameraSelector.Builder()
-                    .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                    .build();
-
-            // Bind the camera use case with the new camera selector
-            bindCameraUseCase(wideAngleSelector);
-        }
-    }
-
-    private void bindCameraUseCase(@NonNull CameraSelector cameraSelector) {
-        Preview preview = new Preview.Builder().build();
-        preview.setSurfaceProvider(binding.previewView.getSurfaceProvider());
+        });
 
         try {
-            cameraProvider.unbindAll();
-            cameraProvider.bindToLifecycle(this, cameraSelector, preview);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+            for (String cameraId : cameraManager.getCameraIdList()) {
 
+                Log.d("WideAngleCamera","cameraId: "+ cameraId );
 
-
-    private boolean checkWideAngleCamera() {
-        CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        int backCameraCount = 0;
-
-        try {
-            String[] cameraIdList = cameraManager.getCameraIdList();
-            Log.d(TAG , "cameraIdList : " + Arrays.toString(cameraIdList));
-
-            for (String cameraId : cameraIdList) {
                 CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+                float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
 
-                Log.d(TAG , "characteristics : " +characteristics.toString() );
-                Log.d(TAG , "characteristics getKeys: " +characteristics.getKeys());
+                Log.d("WideAngleCamera","focalLengths: "+ Arrays.toString(focalLengths));
 
-                // Kiểm tra camera có phải là camera sau hay không
-                Integer lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
-
-                if (lensFacing != null && lensFacing == CameraCharacteristics.LENS_FACING_BACK) {
-                    backCameraCount++;
+                if (focalLengths != null && focalLengths.length > 0) {
+                    if (focalLengths[0] < 3) {
+                        wideCameraId = cameraId; // Camera góc rộng
+                    } else {
+                        normalCameraId = cameraId; // Camera thường
+                    }
                 }
             }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
-
-
-//        CameraManager cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
-//        try {
-//
-//            Log.d(TAG , "cameraManager.getCameraIdList() : " + Arrays.toString(cameraManager.getCameraIdList()));
-//
-//            Log.d(TAG , "cameraManager.getConcurrentCameraIds() : " +cameraManager.getConcurrentCameraIds() );
-//            for (String cameraId : cameraManager.getCameraIdList()) {
-//            Log.d(TAG , "cameraId" +cameraId);
-//                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
-//
-//                Log.d(TAG , "characteristics " +characteristics.toString() );
-//                Log.d(TAG , "characteristics " +characteristics );
-//
-//                if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK) {
-//                    // Check if it is a wide-angle lens by looking at the focal length and sensor size
-//                    float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
-//                    SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
-//
-//                    if (focalLengths != null && sensorSize != null) {
-//                        if (focalLengths.length > 0 && (sensorSize.getWidth() / focalLengths[0]) > 1.0) {
-//                            wideAngleCameraId = cameraId;
-//                            return true;
-//                        }
-//                    }
-//                }
-//
-//            }
-//        } catch (CameraAccessException e) {
-//            Log.e("CameraXDemo", "Cannot access camera: " + e.getMessage());
-//        }
-        return false;
     }
 
+    TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            openCamera();
+        }
 
-    private boolean allPermissionsGranted() {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
-    }
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {}
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            return false;
+        }
 
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
-            if (allPermissionsGranted()) {
-                initializeCamera();
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
+    };
+
+    private void openCamera() {
+        cameraId = useWideCamera ? wideCameraId : normalCameraId;
+        try {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                cameraManager.openCamera(cameraId, stateCallback, null);
             } else {
-                // Quyền bị từ chối
-                Log.e("CameraXDemo", "Quyền truy cập camera bị từ chối");
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
             }
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
+        @Override
+        public void onOpened(@NonNull CameraDevice camera) {
+            cameraDevice = camera;
+            createCameraPreview();
+        }
+
+        @Override
+        public void onDisconnected(@NonNull CameraDevice camera) {
+            cameraDevice.close();
+        }
+
+        @Override
+        public void onError(@NonNull CameraDevice camera, int error) {
+            cameraDevice.close();
+            cameraDevice = null;
+        }
+    };
+
+    protected void createCameraPreview() {
+        try {
+            SurfaceTexture texture = textureView.getSurfaceTexture();
+            assert texture != null;
+            texture.setDefaultBufferSize(640, 480);
+            Surface surface = new Surface(texture);
+            captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            captureRequestBuilder.addTarget(surface);
+
+            cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
+                    if (null == cameraDevice) {
+                        return;
+                    }
+                    cameraCaptureSessions = cameraCaptureSession;
+                    updatePreview();
+                }
+
+                @Override
+                public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {}
+            }, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updatePreview() {
+        if (null == cameraDevice) {
+            return;
+        }
+        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+        try {
+            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void closeCamera() {
+        if (cameraDevice != null) {
+            cameraDevice.close();
+            cameraDevice = null;
         }
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        cameraExecutor.shutdown();
+    protected void onPause() {
+        super.onPause();
+        closeCamera();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (textureView.isAvailable()) {
+            openCamera();
+        } else {
+            textureView.setSurfaceTextureListener(textureListener);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+            if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
+                // Quyền bị từ chối
+                finish();
+            }
+        }
     }
 }
