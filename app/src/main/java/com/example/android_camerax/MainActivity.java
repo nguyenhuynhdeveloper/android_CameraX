@@ -135,15 +135,23 @@ public class MainActivity extends AppCompatActivity {
             for (String cameraId : cameraIdList) {
                 CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
 
-                Log.d(TAG , "characteristics : " +characteristics.toString() );
-                Log.d(TAG , "characteristics getKeys: " +characteristics.getKeys());
+//                int lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
+                float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
 
                 // Kiểm tra camera có phải là camera sau hay không
                 Integer lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
 
+
+                Log.d(TAG , "cameraId: " +cameraId);
+//                Log.d(TAG , "characteristics : " +characteristics.toString() );
+                Log.d(TAG , "focalLengths : " + Arrays.toString(focalLengths));
+                Log.d(TAG , "lensFacing: " +lensFacing);
+
                 if (lensFacing != null && lensFacing == CameraCharacteristics.LENS_FACING_BACK) {
                     backCameraCount++;
                 }
+
+                Log.d(TAG , "characteristics backCameraCount: " +backCameraCount );
             }
         } catch (CameraAccessException e) {
             e.printStackTrace();
