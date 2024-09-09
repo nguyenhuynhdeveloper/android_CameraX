@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="blackboard_insert_position_left_button_margin_end">30dp</dimen>
+    <dimen name="blackboard_insert_position_button_padding">8dp</dimen>
+    <dimen name="blackboard_size_button_margin_end">20dp</dimen>
+</resources>

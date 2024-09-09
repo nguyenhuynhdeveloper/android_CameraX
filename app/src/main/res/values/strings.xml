@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">android_CameraX</string>
+    <string name="app_name">現場Plus</string>
+
+    <string name="fontawesome_path">fontawesome-webfont.ttf</string>
 </resources>

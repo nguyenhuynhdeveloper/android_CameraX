@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/camera_toplayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="CameraActivity">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/camera_previewView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginEnd="100dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:scaleType="fitCenter">
+
+    </androidx.camera.view.PreviewView>
+    <ProgressBar
+        android:id="@+id/camera_progress"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="100dp"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/camera_backbutton"
+            android:layout_width="52dp"
+            android:layout_height="70dp"
+            android:background="@drawable/back_button_d"
+            android:backgroundTint="#FFFFFF"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/camera_takePictureButton" />
+
+        <ImageButton
+            android:id="@+id/camera_takePictureButton"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:background="@drawable/baseline_photo_camera_24"
+            android:backgroundTint="#FFFFFF"
+            android:scaleType="fitCenter"
+            android:tint="#FFFFFF"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:strokeColor="#FFFFFF"
+            app:strokeWidth="3dp" />
+
+        <ImageView
+            android:id="@+id/camera_photolist"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="2dp"
+            android:background="@drawable/baseline_close_24_white"
+            android:backgroundTint="#000000"
+            android:scaleType="centerCrop"
+            app:layout_constraintEnd_toEndOf="@+id/camera_backbutton"
+            app:layout_constraintStart_toStartOf="@+id/camera_backbutton"
+            app:layout_constraintTop_toTopOf="@+id/camera_backbutton" />
+
+        <TextView
+            android:id="@+id/camera_photo_count"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:layout_marginStart="32dp"
+            android:layout_marginBottom="32dp"
+            android:background="@drawable/count"
+            android:paddingTop="2dp"
+            android:text="2"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#F8F0F0"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toBottomOf="@+id/camera_photolist"
+            app:layout_constraintStart_toStartOf="@+id/camera_photolist"
+            app:lineHeight="18dp" />
+
+
+        <ImageButton
+            android:id="@+id/camera_flashbutton"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:alpha="0.5"
+            android:background="#00FFFFFF"
+            android:scaleX="2"
+            android:scaleY="2"
+            android:tint="#FFFFFF"
+            app:layout_constraintBottom_toTopOf="@+id/camera_takePictureButton"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@drawable/baseline_electric_bolt_24" />
+
+        <ImageView
+            android:id="@+id/camera_flashdisabled"
+            android:layout_width="25dp"
+            android:layout_height="25dp"
+            android:scaleType="fitCenter"
+            android:tint="#FFFFFF"
+            app:layout_constraintBottom_toBottomOf="@+id/camera_flashbutton"
+            app:layout_constraintEnd_toEndOf="@+id/camera_flashbutton"
+            app:srcCompat="@drawable/baseline_do_disturb_24" />
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <ImageView
+        android:id="@+id/camera_blackboard"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:adjustViewBounds="false"
+        android:alpha="0.8"
+        android:scaleType="fitXY"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <ImageView
+        android:id="@+id/camera_bbsizetopleft"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:backgroundTint="#FFFFFF"
+        android:foregroundTint="#FFFFFF"
+        android:scaleType="center"
+        android:src="@drawable/resize_handle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="gone" />
+    <ImageView
+        android:id="@+id/camera_bbsizetopright"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:backgroundTint="#FFFFFF"
+        android:foregroundTint="#FFFFFF"
+        android:scaleType="center"
+        android:src="@drawable/resize_handle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="gone" />
+    <ImageView
+        android:id="@+id/camera_bbsizebottomleft"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:backgroundTint="#FFFFFF"
+        android:foregroundTint="#FFFFFF"
+        android:scaleType="center"
+        android:src="@drawable/resize_handle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="gone" />
+    <ImageView
+        android:id="@+id/camera_bbsizebottomright"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:backgroundTint="#FFFFFF"
+        android:foregroundTint="#FFFFFF"
+        android:scaleType="center"
+        android:src="@drawable/resize_handle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="gone" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
