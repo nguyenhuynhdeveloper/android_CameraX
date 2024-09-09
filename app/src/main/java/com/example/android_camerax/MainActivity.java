@@ -108,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
         camera.getCameraControl().setZoomRatio(zoomRatio);
 
-        // Lấy giá trị zoom tối thiểu và tối đa
+        // Lấy giá trị zoom tối thiểu và tối đa của 1 camera
         LiveData<ZoomState> zoomStateLiveData = camera.getCameraInfo().getZoomState();
         zoomStateLiveData.observe(this, new Observer<ZoomState>() {
             @Override
