@@ -1,79 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/camera_toplayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-
     <TextureView
         android:id="@+id/textureView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="80dp"
-        android:layout_marginBottom="100dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:scaleType="fitCenter"/>
+        android:layout_height="match_parent" />
 
-   <LinearLayout
-       android:layout_width="wrap_content"
-       android:layout_height="wrap_content"
-
-       android:orientation="vertical">
-       <Button
-           android:id="@+id/buttonWideCamera"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-           android:text="0" />
-
-       <Button
-           android:id="@+id/buttonNormalCamera"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-           android:text="1" />
-
-       <Button
-           android:id="@+id/buttonTeleCamera"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-           android:text="2" />
-
-       <Button
-           android:id="@+id/buttonFrontCamera"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-           android:text="3" />
-
-       <Button
-           android:id="@+id/buttonTakePicture"
-           android:layout_width="wrap_content"
-           android:layout_height="wrap_content"
-           android:text="Take Picture"
-           android:layout_alignParentBottom="true"
-           android:layout_centerHorizontal="true"/>
-
-       <SeekBar
-           android:id="@+id/exposureSeekBar"
-           android:layout_width="200dp"
-           android:layout_height="wrap_content"
-           android:max="20"
-           android:min="-20"
-           android:layout_below="@id/textureView"
-           android:layout_marginTop="20dp"/>
-
-       <SeekBar
-           android:id="@+id/zoomSeekBar"
-           android:layout_width="200dp"
-           android:layout_height="wrap_content"
-           android:max="100"
-           android:layout_below="@id/exposureSeekBar"
-           android:layout_marginTop="20dp"/>
-
-
-   </LinearLayout>
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <SeekBar
+        android:id="@+id/zoomSeekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:max="100" />
+</RelativeLayout>
