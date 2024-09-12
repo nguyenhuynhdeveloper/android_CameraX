@@ -4,6 +4,7 @@ package com.example.android_camerax;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
@@ -52,6 +53,12 @@ public class MainActivity extends AppCompatActivity {
     private String teleCameraId;
     private String frontCameraId;
     private  String TAG = "Wide_Angle_Camera";
+
+    private SeekBar zoomSeekBar;
+    private float maxZoomLevel;
+    private float currentZoomLevel = 1f;
+    private Rect activeRect;
+
 
     private SeekBar exposureSeekBar;
 
@@ -129,6 +136,14 @@ public class MainActivity extends AppCompatActivity {
                 int lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
                 float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
 
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    float[] LENS_POSE_ROTATION = characteristics.get(CameraCharacteristics.LENS_POSE_ROTATION);
+                }
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    float[] LENS_DISTORTION  = characteristics.get(CameraCharacteristics.LENS_DISTORTION);
+                }
+
                 Log.d(TAG, "cameraId: " +cameraId);
                 Log.d(TAG, "lensFacing: " +lensFacing);
                 Log.d(TAG, "focalLengths: " + Arrays.toString(focalLengths));
@@ -181,6 +196,30 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
+
+        // Tính năng Zoom
+
+        zoomSeekBar = findViewById(R.id.zoomSeekBar);
+
+// Lấy thông tin zoom từ camera
+//        CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+        maxZoomLevel = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+        activeRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+
+// Lắng nghe sự thay đổi của SeekBar
+        zoomSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                setZoomLevel(progress);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
     }
 
     /// End onCreate
@@ -196,6 +235,27 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
+    private void setZoomLevel(int zoomProgress) {
+        float zoomLevel = 1 + ((maxZoomLevel - 1) * zoomProgress / 100); // Tính toán mức zoom
+
+        // Tính toán vùng cắt ảnh dựa trên mức zoom
+        int cropWidth = (int) (activeRect.width() / zoomLevel);
+        int cropHeight = (int) (activeRect.height() / zoomLevel);
+        int cropLeft = (activeRect.width() - cropWidth) / 2;
+        int cropTop = (activeRect.height() - cropHeight) / 2;
+        Rect zoomRect = new Rect(cropLeft, cropTop, cropLeft + cropWidth, cropTop + cropHeight);
+
+        // Cập nhật request cho zoom
+        captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+
+        try {
+            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
 
 
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
@@ -262,7 +322,10 @@ public class MainActivity extends AppCompatActivity {
             Surface surface = new Surface(texture);
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
+
             captureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, exposureSeekBar.getProgress());
+
+            captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, activeRect);
 
 
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
