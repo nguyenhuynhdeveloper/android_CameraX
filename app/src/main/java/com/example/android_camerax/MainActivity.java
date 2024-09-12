@@ -59,8 +59,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-//                switchCamera("0");
-                switchCamera(wideCameraId);
+                switchCamera("0");
+//                switchCamera(wideCameraId);
             }
         });
 
@@ -68,8 +68,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-//                switchCamera("1");
-                switchCamera(normalCameraId);
+                switchCamera("1");
+//                switchCamera(normalCameraId);
 
             }
         });
@@ -77,8 +77,8 @@ public class MainActivity extends AppCompatActivity {
         buttonTeleCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                switchCamera("2");
-                switchCamera(teleCameraId);
+                switchCamera("2");
+//                switchCamera(teleCameraId);
 
             }
         });
@@ -86,8 +86,8 @@ public class MainActivity extends AppCompatActivity {
         buttonFrontCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                switchCamera("3");
-                switchCamera(frontCameraId);
+                switchCamera("3");
+//                switchCamera(frontCameraId);
 
             }
         });

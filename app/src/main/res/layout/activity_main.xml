@@ -29,24 +29,24 @@
            android:id="@+id/buttonWideCamera"
            android:layout_width="wrap_content"
            android:layout_height="wrap_content"
-           android:text="Wide Camera" />
+           android:text="0" />
 
        <Button
            android:id="@+id/buttonNormalCamera"
            android:layout_width="wrap_content"
            android:layout_height="wrap_content"
-           android:text="Normal Camera" />
+           android:text="1" />
 
        <Button
            android:id="@+id/buttonTeleCamera"
            android:layout_width="wrap_content"
            android:layout_height="wrap_content"
-           android:text="Tele Camera" />
+           android:text="2" />
 
        <Button
            android:id="@+id/buttonFrontCamera"
            android:layout_width="wrap_content"
            android:layout_height="wrap_content"
-           android:text="Front Camera" />
+           android:text="3" />
    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
