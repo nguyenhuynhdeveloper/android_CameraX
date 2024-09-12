@@ -42,17 +42,19 @@ class MainActivity : AppCompatActivity() {
         // Khởi tạo executor cho CameraX
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        buttonWideAngle.setOnClickListener {
-            camera?.let { it1 -> setZoomRatio(it1, 0.5f) }
-        }
+//        buttonWideAngle.setOnClickListener {
+//            camera?.let { it1 -> setZoomRatio(it1, 0.5f) }
+//        }
+//
+//        buttonNormal.setOnClickListener {
+//            camera?.let { it1 -> setZoomRatio(it1, 3f) }
+//        }
 
-        buttonNormal.setOnClickListener {
-            camera?.let { it1 -> setZoomRatio(it1, 3f) }
-        }
 
 
         if (allPermissionsGranted()) {
-            startCamera()
+//            startCamera()
+            startWideAngleCamera()
         } else {
             ActivityCompat.requestPermissions(
                 this,
@@ -62,34 +64,76 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+//    private fun startCamera() {
+//        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+//        cameraProviderFuture.addListener({
+//            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+//
+//            val preview = Preview.Builder().build().also {
+//                it.setSurfaceProvider(previewView!!.surfaceProvider)
+//            }
+//
+//            val cameraSelector = CameraSelector.Builder()
+//                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+//                .build()
+//
+//            val camera = cameraProvider.bindToLifecycle(
+//                this, cameraSelector, preview
+//            )
+//        }, ContextCompat.getMainExecutor(this))
+//    }
+
+
+//    private fun setZoomRatio(camera: Camera, zoomRatio: Float) {
+//        val cameraControl = camera.cameraControl
+//        val zoomState = camera.cameraInfo.zoomState.value
+//
+//        val newZoomRatio = zoomState?.zoomRatio?.times(zoomRatio)
+//        if (newZoomRatio != null) {
+//            cameraControl.setZoomRatio(newZoomRatio)
+//        }
+//    }
+
+
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(previewView!!.surfaceProvider)
             }
-
             val cameraSelector = CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                 .build()
-
-            val camera = cameraProvider.bindToLifecycle(
-                this, cameraSelector, preview
-            )
+            val camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview)
         }, ContextCompat.getMainExecutor(this))
     }
 
 
-    private fun setZoomRatio(camera: Camera, zoomRatio: Float) {
-        val cameraControl = camera.cameraControl
-        val zoomState = camera.cameraInfo.zoomState.value
+    private fun selectWideAngleCamera(cameraProvider: ProcessCameraProvider): CameraSelector {
+        val cameraInfos = cameraProvider.availableCameraInfos
+//        for (cameraInfo in cameraInfos) {
+//            val characteristics = Camera2CameraInfo.from(cameraInfo).getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+//            val focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+//            if (focalLengths != null && focalLengths.any { it < 2.0f }) {
+//                return CameraSelector.Builder()
+//                    .addCameraFilter { listOf(cameraInfo) }
+//                    .build()
+//            }
+//        }
+        return CameraSelector.
+    }
 
-        val newZoomRatio = zoomState?.zoomRatio?.times(zoomRatio)
-        if (newZoomRatio != null) {
-            cameraControl.setZoomRatio(newZoomRatio)
-        }
+    private fun startWideAngleCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            val cameraSelector = selectWideAngleCamera(cameraProvider)
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(previewView!!.surfaceProvider)
+            }
+            val camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview)
+        }, ContextCompat.getMainExecutor(this))
     }
 
 
