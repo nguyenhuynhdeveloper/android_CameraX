@@ -15,13 +15,13 @@
         android:id="@+id/buttonWideAngle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="0.5X" />
+        android:text="2X" />
 
     <Button
         android:id="@+id/buttonNormal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="1X" />
+        android:text="3X" />
 
     <Button
         android:id="@+id/captureButton"
