@@ -70,7 +70,8 @@
            android:id="@+id/zoomSeekBar"
            android:layout_width="200dp"
            android:layout_height="wrap_content"
-           android:max="100"
+           android:max="70"
+           android:min="0"
            android:layout_below="@id/exposureSeekBar"
            android:layout_marginTop="20dp"/>
 

@@ -270,13 +270,20 @@ public class MainActivity extends AppCompatActivity {
             CameraManager manager = (CameraManager) getSystemService(CAMERA_SERVICE);
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraDevice.getId());
             Rect activeRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-            int minW = (int) (activeRect.width() / maxZoomLevel);
-            int minH = (int) (activeRect.height() / maxZoomLevel);
+            float maxZoom = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+
+            int minW = (int) (activeRect.width() / maxZoom);
+            int minH = (int) (activeRect.height() / maxZoom);
             int difW = activeRect.width() - minW;
             int difH = activeRect.height() - minH;
             int cropW = difW * zoomLevel / 100;
             int cropH = difH * zoomLevel / 100;
-            Rect zoomRect = new Rect(cropW, cropH, activeRect.width() - cropW, activeRect.height() - cropH);
+
+            // Ensure the crop region is within the active array size
+            cropW = Math.min(cropW, difW);
+            cropH = Math.min(cropH, difH);
+
+           Rect zoomRect = new Rect(cropW, cropH, activeRect.width() - cropW, activeRect.height() - cropH);
 
             captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
             cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
@@ -285,6 +292,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
 
 
 
