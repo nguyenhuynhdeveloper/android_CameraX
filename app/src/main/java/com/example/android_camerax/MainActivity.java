@@ -12,7 +12,11 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.TotalCaptureResult;
+import android.media.Image;
+import android.media.ImageReader;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
@@ -23,6 +27,12 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import android.graphics.ImageFormat;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
@@ -40,6 +50,10 @@ public class MainActivity extends AppCompatActivity {
     private String frontCameraId;
     private  String TAG = "Wide_Angle_Camera";
 
+    // Các biến thêm mới
+    private Button buttonTakePicture;
+    private ImageReader imageReader;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -50,6 +64,9 @@ public class MainActivity extends AppCompatActivity {
         Button buttonNormalCamera = findViewById(R.id.buttonNormalCamera);
         Button buttonTeleCamera = findViewById(R.id.buttonTeleCamera);
         Button buttonFrontCamera = findViewById(R.id.buttonFrontCamera);
+
+        // Nút chụp ảnh
+        buttonTakePicture = findViewById(R.id.buttonTakePicture);
 
         cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
 
@@ -89,6 +106,14 @@ public class MainActivity extends AppCompatActivity {
                 switchCamera("3");
 //                switchCamera(frontCameraId);
 
+            }
+        });
+
+        // Xử lý khi nhấn nút chụp ảnh
+        buttonTakePicture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                takePicture();
             }
         });
 
@@ -218,6 +243,101 @@ public class MainActivity extends AppCompatActivity {
             cameraDevice = null;
         }
     }
+
+    // ---------------
+    private void takePicture() {
+        if (cameraDevice == null) {
+            Log.e(TAG, "cameraDevice is null");
+            return;
+        }
+
+        // Thiết lập ImageReader để nhận hình ảnh
+        Size[] jpegSizes = null;
+        try {
+            CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraDevice.getId());
+            jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                    .getOutputSizes(ImageFormat.JPEG);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+        int width = 640;
+        int height = 480;
+        if (jpegSizes != null && jpegSizes.length > 0) {
+            width = jpegSizes[0].getWidth();
+            height = jpegSizes[0].getHeight();
+        }
+
+        // Thiết lập ImageReader để chụp ảnh
+        imageReader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
+        Surface readerSurface = imageReader.getSurface();
+        imageReader.setOnImageAvailableListener(imageAvailableListener, null);
+
+        try {
+            CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            captureBuilder.addTarget(readerSurface);
+            captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+
+            // Lưu hình ảnh vào thư mục
+            File file = new File(Environment.getExternalStorageDirectory() + "/DCIM", "pic.jpg");
+
+            cameraCaptureSessions.stopRepeating();
+            cameraCaptureSessions.abortCaptures();
+
+            cameraDevice.createCaptureSession(Arrays.asList(readerSurface), new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(@NonNull CameraCaptureSession session) {
+                    try {
+                        session.capture(captureBuilder.build(), new CameraCaptureSession.CaptureCallback() {
+                            @Override
+                            public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                                Log.d(TAG, "Image Captured");
+                                createCameraPreview();  // Quay trở lại chế độ preview sau khi chụp
+                            }
+                        }, null);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                }
+            }, null);
+
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Lưu ảnh khi nó có sẵn
+    private final ImageReader.OnImageAvailableListener imageAvailableListener = new ImageReader.OnImageAvailableListener() {
+        @Override
+        public void onImageAvailable(ImageReader reader) {
+            Image image = null;
+            try {
+                image = reader.acquireLatestImage();
+                ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                byte[] bytes = new byte[buffer.remaining()];
+                buffer.get(bytes);
+                save(bytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (image != null) {
+                    image.close();
+                }
+            }
+        }
+
+        private void save(byte[] bytes) throws IOException {
+            File file = new File(Environment.getExternalStorageDirectory() + "/DCIM", "pic.jpg");
+            try (FileOutputStream output = new FileOutputStream(file)) {
+                output.write(bytes);
+                Log.d(TAG, "Saved Image to: " + file.getAbsolutePath());
+            }
+        }
+    };
 
     @Override
     protected void onPause() {
