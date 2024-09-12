@@ -18,6 +18,7 @@ import android.media.ImageReader;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
@@ -28,12 +29,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.graphics.ImageFormat;
+import android.widget.SeekBar;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -49,6 +52,9 @@ public class MainActivity extends AppCompatActivity {
     private String teleCameraId;
     private String frontCameraId;
     private  String TAG = "Wide_Angle_Camera";
+
+    private SeekBar exposureSeekBar;
+
 
     // Các biến thêm mới
     private Button buttonTakePicture;
@@ -70,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
 
         cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
 
-        textureView.setSurfaceTextureListener(textureListener);
+        textureView.setSurfaceTextureListener(textureListener);  // đoạn gốc để mở camera
 
         buttonWideCamera.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -132,8 +138,6 @@ public class MainActivity extends AppCompatActivity {
                 } else if (focalLengths != null && focalLengths.length > 0) {
                     if (focalLengths[0] < 2.0) {
                         wideCameraId = cameraId; // Camera góc rộng
-                    } else if (focalLengths[0] > 4.0) {
-                        teleCameraId = cameraId; // Camera tele
                     } else {
                         normalCameraId = cameraId; // Camera thường
                     }
@@ -142,12 +146,63 @@ public class MainActivity extends AppCompatActivity {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
+
+        // Tính năng Phơi sáng
+
+        exposureSeekBar = findViewById(R.id.exposureSeekBar);
+
+// // Lấy đặc tính phơi sáng từ camera
+        CameraCharacteristics characteristics = null;
+        Log.d(TAG, "characteristics: " + cameraDevice);
+        try {
+            characteristics = cameraManager.getCameraCharacteristics("3");
+
+        } catch (CameraAccessException e) {
+            throw new RuntimeException(e);
+        }
+        Range<Integer> exposureRange = characteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE);
+
+        Log.d(TAG, "exposureRange.getUpper(): " + exposureRange.getUpper());
+        Log.d(TAG, "exposureRange.getUpper(): " + exposureRange.getLower());
+
+        exposureSeekBar.setMax(exposureRange.getUpper());
+        exposureSeekBar.setMin(exposureRange.getLower());
+
+// Lắng nghe sự thay đổi của SeekBar
+        exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                setExposureCompensation(progress);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
     }
+
+    /// End onCreate
+
+    private void setExposureCompensation(int exposureValue) {
+        try {
+            // Thiết lập giá trị bù sáng trong capture request
+            captureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, exposureValue);
+
+            // Cập nhật session với capture request mới
+            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            openCamera(teleCameraId); // Mặc định mở camera thường
+            cameraId = normalCameraId;
+            openCamera(normalCameraId); // Mặc định mở camera thường
         }
 
         @Override
@@ -167,10 +222,11 @@ public class MainActivity extends AppCompatActivity {
         openCamera(newCameraId);
     }
 
-    private void openCamera(String cameraId) {
+    private void openCamera(String cameraId_params) {
         try {
+            cameraId = cameraId_params;
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                cameraManager.openCamera(cameraId, stateCallback, null);
+                cameraManager.openCamera(cameraId_params, stateCallback, null);
             } else {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
             }
@@ -206,6 +262,8 @@ public class MainActivity extends AppCompatActivity {
             Surface surface = new Surface(texture);
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
+            captureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, exposureSeekBar.getProgress());
+
 
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
                 @Override
