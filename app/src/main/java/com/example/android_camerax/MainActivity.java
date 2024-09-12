@@ -122,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            openCamera(normalCameraId); // Mặc định mở camera thường
+            openCamera(teleCameraId); // Mặc định mở camera thường
         }
 
         @Override
