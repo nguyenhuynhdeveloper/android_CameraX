@@ -2,12 +2,14 @@ package com.example.android_camerax
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
@@ -19,6 +21,7 @@ import androidx.lifecycle.LifecycleOwner
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -69,14 +72,15 @@ class MainActivity : AppCompatActivity() {
             }
 
             val cameraSelector = CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
                 .build()
 
-             camera = cameraProvider.bindToLifecycle(
+            val camera = cameraProvider.bindToLifecycle(
                 this, cameraSelector, preview
             )
         }, ContextCompat.getMainExecutor(this))
     }
+
 
     private fun setZoomRatio(camera: Camera, zoomRatio: Float) {
         val cameraControl = camera.cameraControl
