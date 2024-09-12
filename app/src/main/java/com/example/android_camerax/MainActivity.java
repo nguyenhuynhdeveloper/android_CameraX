@@ -60,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
     private Rect activeRect;
 
 
+
+
     private SeekBar exposureSeekBar;
 
 
@@ -206,12 +208,16 @@ public class MainActivity extends AppCompatActivity {
         maxZoomLevel = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
         activeRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
 
+        Log.d(TAG, "maxZoomLevel: " +maxZoomLevel);
+
 // Lắng nghe sự thay đổi của SeekBar
         zoomSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                setZoomLevel(progress);
+//                setZoomLevel(progress);
+                updateZoom(progress);
             }
+
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -251,6 +257,30 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateZoom(int zoomLevel) {
+        if (cameraDevice == null) {
+            return;
+        }
+        try {
+            CameraManager manager = (CameraManager) getSystemService(CAMERA_SERVICE);
+            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraDevice.getId());
+            Rect activeRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+            int minW = (int) (activeRect.width() / maxZoomLevel);
+            int minH = (int) (activeRect.height() / maxZoomLevel);
+            int difW = activeRect.width() - minW;
+            int difH = activeRect.height() - minH;
+            int cropW = difW * zoomLevel / 100;
+            int cropH = difH * zoomLevel / 100;
+            Rect zoomRect = new Rect(cropW, cropH, activeRect.width() - cropW, activeRect.height() - cropH);
+
+            captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
+            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -325,7 +355,7 @@ public class MainActivity extends AppCompatActivity {
 
             captureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, exposureSeekBar.getProgress());
 
-            captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, activeRect);
+//            captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, activeRect);
 
 
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
