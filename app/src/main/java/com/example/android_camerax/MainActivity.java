@@ -60,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
     private Rect activeRect;
 
     private boolean isFlashOn = false;  // Trạng thái flash mặc định là tắt
+    private boolean isFlashOnWhenCapture = false;  // Đèn flash khi chụp ảnh
+
 
 
 
@@ -247,6 +249,21 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+
+        // Button Flash khi chụp ảnh
+        Button buttonFlickerFlash = findViewById(R.id.buttonFlickerFlash);
+        buttonFlickerFlash.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                isFlashOnWhenCapture = !isFlashOnWhenCapture; // Đảo ngược trạng thái flash khi chụp
+                if (isFlashOnWhenCapture) {
+                    buttonFlickerFlash.setText("Flash On");
+                } else {
+                    buttonFlickerFlash.setText("Flash Off");
+                }
+            }
         });
 
     }
@@ -473,7 +490,16 @@ public class MainActivity extends AppCompatActivity {
         try {
             CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(readerSurface);
-            captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+            captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);  // Thiết lập chế độ phơi sáng tự động
+
+
+            // Bật flash nếu trạng thái flash khi chụp ảnh được bật -- Chớp nháy đèn Flash
+            if (isFlashOnWhenCapture) {
+                captureBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_SINGLE);  // Nháy flash khi chụp
+            } else {
+                captureBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);  // Không bật flash
+            }
+            ///
 
             // Lưu hình ảnh vào thư mục
             File file = new File(Environment.getExternalStorageDirectory() + "/DCIM", "pic.jpg");
@@ -481,6 +507,7 @@ public class MainActivity extends AppCompatActivity {
             cameraCaptureSessions.stopRepeating();
             cameraCaptureSessions.abortCaptures();
 
+            // Khi click chụp ánh sẽ bắt đầu 1 phiên chụp ảnh
             cameraDevice.createCaptureSession(Arrays.asList(readerSurface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession session) {
