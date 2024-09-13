@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     private float currentZoomLevel = 1f;
     private Rect activeRect;
 
+    private boolean isFlashOn = false;  // Trạng thái flash mặc định là tắt
 
 
 
@@ -132,6 +133,18 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        Button buttonFlash = findViewById(R.id.buttonFlash);
+        buttonFlash.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (cameraDevice != null) {
+                    isFlashOn = !isFlashOn; // Đảo ngược trạng thái flash
+                    updateFlashMode();      // Cập nhật chế độ flash
+                }
+            }
+        });
+
+
         try {
             for (String cameraId : cameraManager.getCameraIdList()) {
                 CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
@@ -172,18 +185,28 @@ public class MainActivity extends AppCompatActivity {
         CameraCharacteristics characteristics = null;
         Log.d(TAG, "characteristics: " + cameraDevice);
         try {
-            characteristics = cameraManager.getCameraCharacteristics("3");
+            characteristics = cameraManager.getCameraCharacteristics("0");
+            Boolean hasFlash = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
+
+            if (hasFlash != null && hasFlash) {
+                // Camera hỗ trợ flash, nút bật/tắt flash sẽ có tác dụng
+            } else {
+                // Camera không hỗ trợ flash, có thể ẩn nút bật/tắt flash
+                buttonFlash.setVisibility(View.GONE);
+            }
+
+            Range<Integer> exposureRange = characteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE);
+
+            Log.d(TAG, "exposureRange.getUpper(): " + exposureRange.getUpper());
+            Log.d(TAG, "exposureRange.getUpper(): " + exposureRange.getLower());
+
+            exposureSeekBar.setMax(exposureRange.getUpper());
+            exposureSeekBar.setMin(exposureRange.getLower());
 
         } catch (CameraAccessException e) {
             throw new RuntimeException(e);
         }
-        Range<Integer> exposureRange = characteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE);
 
-        Log.d(TAG, "exposureRange.getUpper(): " + exposureRange.getUpper());
-        Log.d(TAG, "exposureRange.getUpper(): " + exposureRange.getLower());
-
-        exposureSeekBar.setMax(exposureRange.getUpper());
-        exposureSeekBar.setMin(exposureRange.getLower());
 
 // Lắng nghe sự thay đổi của SeekBar
         exposureSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -228,7 +251,22 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    /// End onCreate
+    ///-------------------- End onCreate
+
+    private void updateFlashMode() {
+        if (isFlashOn) {
+            captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);  // Bật flash
+        } else {
+            captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_OFF);    // Tắt flash
+        }
+
+        try {
+            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);    // Áp dụng thay đổi
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     private void setExposureCompensation(int exposureValue) {
         try {

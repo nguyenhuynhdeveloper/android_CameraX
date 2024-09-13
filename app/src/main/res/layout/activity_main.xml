@@ -75,6 +75,13 @@
            android:layout_below="@id/exposureSeekBar"
            android:layout_marginTop="20dp"/>
 
+       <Button
+           android:id="@+id/buttonFlash"
+           android:layout_width="wrap_content"
+           android:layout_height="wrap_content"
+           android:text="Flash" />
+
+
 
    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
