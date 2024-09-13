@@ -1,77 +1,92 @@
 package com.example.android_camerax;
-
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
 import android.graphics.Matrix;
-import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.TotalCaptureResult;
-import android.hardware.camera2.params.MeteringRectangle;
+import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.Image;
+import android.media.ImageReader;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
-import android.widget.SeekBar;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
-import java.util.Collections;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.CookieHandler;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_PERMISSION = 200;
+
     private TextureView textureView;
+    private Button btnCapture;
     private CameraDevice cameraDevice;
     private CameraCaptureSession cameraCaptureSession;
     private CaptureRequest.Builder captureRequestBuilder;
-    private SeekBar zoomSeekBar;
-    private float maxZoom;
-    private Rect zoomRect;
+    private Size imageDimension;
+    private ImageReader imageReader;
+    private File file;
+    private String TAG = "Capture";
 
-
-    private String TAG = "Zoom";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         textureView = findViewById(R.id.textureView);
-        zoomSeekBar = findViewById(R.id.zoomSeekBar);
+        btnCapture = findViewById(R.id.btnCapture);
 
         textureView.setSurfaceTextureListener(textureListener);
-        zoomSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        btnCapture.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                updateZoom(progress);
+            public void onClick(View v) {
+                takePicture();
             }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
         });
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
+        }
     }
 
-    private final TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
+    TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             openCamera();
         }
 
         @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {}
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+        }
 
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
@@ -79,26 +94,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {}
-    };
-
-    private void openCamera() {
-        CameraManager manager = (CameraManager) getSystemService(CAMERA_SERVICE);
-        try {
-            String cameraId = manager.getCameraIdList()[0];
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
-            maxZoom = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) * 10;
-            zoomSeekBar.setMax((int) maxZoom);
-
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
-                return;
-            }
-            manager.openCamera(cameraId, stateCallback, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
         }
-    }
+    };
 
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         @Override
@@ -119,21 +117,31 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private void openCamera() {
+        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        try {
+            String cameraId = manager.getCameraIdList()[0];
+            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
+            manager.openCamera(cameraId, stateCallback, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void createCameraPreview() {
         try {
             SurfaceTexture texture = textureView.getSurfaceTexture();
-            assert texture != null;
-            texture.setDefaultBufferSize(1920, 1080);
+            texture.setDefaultBufferSize(imageDimension.getWidth(), imageDimension.getHeight());
             Surface surface = new Surface(texture);
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
 
-            cameraDevice.createCaptureSession(Collections.singletonList(surface), new CameraCaptureSession.StateCallback() {
+            cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession session) {
-                    if (cameraDevice == null) {
-                        return;
-                    }
+                    if (cameraDevice == null) return;
                     cameraCaptureSession = session;
                     updatePreview();
                 }
@@ -149,10 +157,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updatePreview() {
-        if (cameraDevice == null) {
-            return;
-        }
-        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+        if (cameraDevice == null) return;
+        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
         try {
             cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
         } catch (CameraAccessException e) {
@@ -160,71 +166,101 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void updateZoom(int zoomLevel) {
-        if (cameraDevice == null) {
-            return;
-        }
+    private void takePicture() {
+        if (cameraDevice == null) return;
+        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
-            CameraManager manager = (CameraManager) getSystemService(CAMERA_SERVICE);
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraDevice.getId());
+            Size[] jpegSizes = null;
+            if (characteristics != null) {
+                jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
+            }
+            int width = 640;
+            int height = 480;
+            if (jpegSizes != null && jpegSizes.length > 0) {
+                width = jpegSizes[0].getWidth();
+                height = jpegSizes[0].getHeight();
+            }
+            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
+            List<Surface> outputSurfaces = new ArrayList<>(2);
+            outputSurfaces.add(reader.getSurface());
+            outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));
 
-            Rect activeRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-            float maxZoom = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            captureBuilder.addTarget(reader.getSurface());
+            captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
 
-            Log.d(TAG, "activeRect: "+activeRect);
-            Log.d(TAG, "activeRect width: "+activeRect.width());
-            Log.d(TAG, "activeRect height: "+activeRect.height());
-            Log.d(TAG, "maxZoom: "+maxZoom);
+            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+//            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
 
-            // Tính toán lại vùng crop
-            int minW = (int) Math.floor(activeRect.width() / maxZoom);
-            int minH = (int) Math.floor(activeRect.height() / maxZoom);
+            file = new File(getExternalFilesDir(null) + "/" + UUID.randomUUID().toString() + ".jpg");
 
-            int difW = activeRect.width() - minW;
-            int difH = activeRect.height() - minH;
+            Log.d(TAG, "file :" +file);
+            ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
+                @Override
+                public void onImageAvailable(ImageReader reader) {
+                    Image image = null;
+                    try {
+                        image = reader.acquireLatestImage();
+                        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                        byte[] bytes = new byte[buffer.capacity()];
+                        buffer.get(bytes);
+                        save(bytes);
+                    } finally {
+                        if (image != null) {
+                            image.close();
+                        }
+                    }
+                }
 
-            int cropW = difW * zoomLevel / 100;
-            int cropH = difH * zoomLevel / 100;
+                private void save(byte[] bytes) {
+                    OutputStream output = null;
+                    try {
+                        output = new FileOutputStream(file);
+                        output.write(bytes);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } finally {
+                        try {
+                            if (output != null) {
+                                output.close();
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            };
 
-            // Đảm bảo vùng crop không vượt quá giới hạn
-            cropW = Math.min(cropW, difW);
-            cropH = Math.min(cropH, difH);
+            reader.setOnImageAvailableListener(readerListener, null);
 
-            Log.d(TAG, "minW: "+minW);
-            Log.d(TAG, "minH: "+minH);
-            Log.d(TAG, "difW: "+difW);
-            Log.d(TAG, "difH: "+difH);
-            Log.d(TAG, "cropW: "+cropW);
-            Log.d(TAG, "cropH: "+cropH);
+            final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
+                @Override
+                public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                    super.onCaptureCompleted(session, request, result);
+                    Toast.makeText(MainActivity.this, "Saved: " + file, Toast.LENGTH_SHORT).show();
+                    createCameraPreview();
+                }
+            };
 
+            cameraDevice.createCaptureSession(outputSurfaces, new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(@NonNull CameraCaptureSession session) {
+                    try {
+                        session.capture(captureBuilder.build(), captureListener, null);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
 
-            // Tạo vùng zoom mới
-            Rect zoomRect = new Rect(cropW, cropH, activeRect.width() - cropW, activeRect.height() - cropH);
-
-
-//// Kích thước của cảm biến camera
-//            int sensorWidth = activeRect.width();
-//            int sensorHeight = activeRect.height();
-//
-//// Tính toán kích thước cho zoomLevel
-//            int cropWidth = (int) (sensorWidth / zoomLevel);
-//            int cropHeight = (int) (sensorHeight / zoomLevel);
-//
-//// Tính toán điểm bắt đầu của vùng cắt (để giữ hình ảnh ở giữa)
-//            int cropLeft = (sensorWidth - cropWidth) / 2;
-//            int cropTop = (sensorHeight - cropHeight) / 2;
-//
-//// Tạo Rect mới để set vào SCALER_CROP_REGION
-//            Rect zoomRect = new Rect(cropLeft, cropTop, cropLeft + cropWidth, cropTop + cropHeight);
-
-            Log.d(TAG, "zoomRect end: "+zoomRect);
-            captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
-            cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+                @Override
+                public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                }
+            }, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
