@@ -121,7 +121,7 @@ class MainActivity : AppCompatActivity() {
 //                    .build()
 //            }
 //        }
-        return CameraSelector.
+        return CameraSelector.DEFAULT_BACK_CAMERA
     }
 
     private fun startWideAngleCamera() {
