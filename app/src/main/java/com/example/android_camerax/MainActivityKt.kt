@@ -24,7 +24,7 @@ import java.util.concurrent.Executors
 
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivityKt : AppCompatActivity() {
     private var previewView: PreviewView? = null
     private var cameraExecutor: ExecutorService? = null
     private lateinit var camera: Camera
@@ -121,7 +121,7 @@ class MainActivity : AppCompatActivity() {
 //                    .build()
 //            }
 //        }
-        return CameraSelector.
+        return CameraSelector.DEFAULT_BACK_CAMERA
     }
 
     private fun startWideAngleCamera() {
