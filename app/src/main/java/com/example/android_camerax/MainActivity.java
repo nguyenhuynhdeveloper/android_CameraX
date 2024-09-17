@@ -15,8 +15,10 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.TextureView;
+import android.view.View;
 import android.widget.SeekBar;
 import android.widget.Toast;
 
@@ -40,6 +42,13 @@ public class MainActivity extends AppCompatActivity {
     private SeekBar zoomSeekBar;
     private float maxZoom;
     private Size previewSize;
+
+    private CameraCharacteristics cameraCharacteristics;
+    private float fingerSpacing = 0;
+    private float zoomLevel = 1.0f;
+    private  CameraManager manager;
+
+    private Rect zoom;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,6 +78,56 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
+
+
+        // Thiết lập OnTouchListener cho TextureView
+        textureView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (cameraCharacteristics == null) return false;
+                Rect rect = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+                if (rect == null) return false;
+
+                float currentFingerSpacing;
+                if (event.getPointerCount() == 2) { // Multi touch.
+                    currentFingerSpacing = getFingerSpacing(event);
+                    float delta = 10.0f; // Điều chỉnh giá trị này để điều chỉnh độ nhạy của zoom
+                    if (fingerSpacing != 0) {
+                        Log.d(TAG, "_fingerSpacing :" + fingerSpacing);
+                        if (currentFingerSpacing > fingerSpacing && zoomLevel < maxZoom) {
+                            zoomLevel += delta;
+                            Log.d(TAG, "_zoomLevel ++ :" + zoomLevel);
+                        } else if (currentFingerSpacing < fingerSpacing && zoomLevel > 1) {
+                            zoomLevel -= delta;
+                            Log.d(TAG, "_zoomLevel -- :" + zoomLevel);
+                        }
+                        int minW = (int) (rect.width() / maxZoom);
+                        int minH = (int) (rect.height() / maxZoom);
+                        int difW = rect.width() - minW;
+                        int difH = rect.height() - minH;
+                        int cropW = difW / 100 * (int) zoomLevel;
+                        int cropH = difH / 100 * (int) zoomLevel;
+                        cropW -= cropW & 3;
+                        cropH -= cropH & 3;
+                        zoom = new Rect(cropW, cropH, rect.width() - cropW, rect.height() - cropH);
+                        captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoom);
+                        try {
+                            cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+                        } catch (CameraAccessException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    fingerSpacing = currentFingerSpacing;
+                    Log.d(TAG, "_fingerSpacing after:" + fingerSpacing);
+
+                } else {
+                    fingerSpacing = 0;
+                }
+                return true;
+            }
+        });
+
+
     }
 
     private boolean checkCameraPermission() {
@@ -114,12 +173,14 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private void openCamera() {
-        CameraManager manager = (CameraManager) getSystemService(CAMERA_SERVICE);
+         manager = (CameraManager) getSystemService(CAMERA_SERVICE);
         try {
             String cameraId = manager.getCameraIdList()[0];
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
 
             maxZoom = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+            cameraCharacteristics = manager.getCameraCharacteristics(cameraId);
+
             zoomSeekBar.setMax((int) (maxZoom * 10));
 
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
@@ -270,6 +331,13 @@ public class MainActivity extends AppCompatActivity {
             cameraDevice.close();
             cameraDevice = null;
         }
+    }
+
+
+    private float getFingerSpacing(MotionEvent event) {
+        float x = event.getX(0) - event.getX(1);
+        float y = event.getY(0) - event.getY(1);
+        return (float) Math.sqrt(x * x + y * y);
     }
 
     @Override
