@@ -15,7 +15,25 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginBottom="200dp"
+
+        />
+
+    <com.example.android_camerax.RulerView
+
+        android:id="@+id/ruler_view"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:layout_centerInParent="true"
+        android:background="@android:color/black"
+        android:visibility="visible"
+        tools:ignore="MissingConstraints"
+
+        app:layout_constraintBottom_toBottomOf="@id/zoomSeekBar"
+        android:layout_marginBottom="40dp"
+
+        />
 
     <SeekBar
         android:id="@+id/zoomSeekBar"

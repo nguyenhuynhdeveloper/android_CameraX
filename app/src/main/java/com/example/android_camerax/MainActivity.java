@@ -1,6 +1,7 @@
 package com.example.android_camerax;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Matrix;
 import android.graphics.Rect;
@@ -13,6 +14,8 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Size;
 import android.view.MotionEvent;
@@ -27,8 +30,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -37,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
 
     private TextureView textureView;
     private CameraDevice cameraDevice;
-    private CameraCaptureSession cameraCaptureSession;
+//    private CameraCaptureSession cameraCaptureSession;
     private CaptureRequest.Builder captureRequestBuilder;
     private SeekBar zoomSeekBar;
     private float maxZoom;
@@ -49,6 +57,22 @@ public class MainActivity extends AppCompatActivity {
     private  CameraManager manager;
 
     private Rect zoom;
+
+    private RulerView ruler_view ;
+    float initialZoomLevel = 1.0f; // Ví dụ: mức zoom khởi tạo
+
+    private String wideCameraId;
+    private String normalCameraId;
+    private CameraManager cameraManager;
+
+    private CameraCaptureSession cameraCaptureSessions;
+    private CameraViewModel cameraViewModel;
+
+    private Handler backgroundHandler;
+    private HandlerThread backgroundThread;
+    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         zoomSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                updateZoom(progress);
+//                updateZoom(progress);
             }
 
             @Override
@@ -112,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
                         zoom = new Rect(cropW, cropH, rect.width() - cropW, rect.height() - cropH);
                         captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoom);
                         try {
-                            cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+                            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
                         } catch (CameraAccessException e) {
                             throw new RuntimeException(e);
                         }
@@ -127,7 +151,100 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        ruler_view = findViewById(R.id.ruler_view);
+        cameraViewModel = new ViewModelProvider(this).get(CameraViewModel.class);
 
+        // Lấy thông số của camera và set giá trị ban đầu cho cây thước
+        try {
+            for (String cameraId : cameraManager.getCameraIdList()) {
+                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+                int lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
+                float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+
+                Log.d(TAG, "cameraId: " +cameraId);
+                Log.d(TAG, "lensFacing: " +lensFacing);
+                Log.d(TAG, "focalLengths: " + Arrays.toString(focalLengths));
+
+                if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
+//                    frontCameraId = cameraId; // Camera trước
+                    Log.d(TAG, "cameraId: " +cameraId);
+                }
+                else if (focalLengths != null && focalLengths.length > 0) {
+                    if (focalLengths[0] > 2.5) {   // Cam thường
+
+                        normalCameraId = cameraId; // Camera thường
+                        Log.d(TAG, "_onCreate _normalCameraId: " +normalCameraId);
+                        maxZoom = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+                        ruler_view.setMaxZoomLevel(maxZoom);
+//                        ruler_view.setMaxZoomLevel(8.0f);
+
+                        ruler_view.setMinZoomLevel(1.0f);   // Khi thấy cam thường thì set là 1.0f trước
+
+                        cameraViewModel.setValueMaxZoom(maxZoom);
+                        cameraViewModel.setValueMinZoom(1.0f);
+
+                    }  else {
+
+                        wideCameraId = cameraId; // Camera góc rộng
+
+//                        ruler_view.setMinZoomLevel(0.5f);  // Nếu có cam góc rộng thì set min của Zoom thành 0.5f
+//                        cameraViewModel.setValueMinZoom(0.5f);
+
+                        ruler_view.setMinZoomLevel(0.5f);  // Nếu có cam góc rộng thì set min của Zoom thành 0.5f
+                        cameraViewModel.setValueMinZoom(1.0f);
+
+                        cameraViewModel.setIsHaveUltrawideCamera(false);
+
+                    }
+                }
+            }
+            ruler_view.setZoomLevel(initialZoomLevel);  // Thiết lập mức zoom ban đầu
+            cameraViewModel.setCurrentValueRulerView(initialZoomLevel);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+
+        ruler_view = findViewById(R.id.ruler_view);
+        // Đăng ký lắng nghe thay đổi zoom level từ RulerView
+        ruler_view.setOnZoomLevelChangeListener(new RulerView.OnZoomLevelChangeListener() {
+            @Override
+            public void onZoomLevelChanged(float newZoomLevel) {
+
+                Float oldCurrentValueRulerView = cameraViewModel.getCurrentValueRulerView().getValue();
+
+                Log.d(TAG , "_setOnZoomLevelChangeListener _newZoomLevel: " +newZoomLevel);
+                Log.d(TAG , "_setOnZoomLevelChangeListener _oldCurrentValueZoom: " + oldCurrentValueRulerView);
+
+                if( oldCurrentValueRulerView < 1.0f && newZoomLevel >= 1.0f ){
+
+                    Log.d(TAG , "_setOnZoomLevelChangeListener change to normal camera: " );
+                    switchCamera(normalCameraId);
+                    cameraViewModel.setCurrentValueRulerView(newZoomLevel);
+                }
+                else if (oldCurrentValueRulerView >= 1.0f && newZoomLevel < 1.0f ){
+                    Log.d(TAG , "_setOnZoomLevelChangeListener change to ultra wide camera: " );
+
+                    switchCamera(wideCameraId);
+                    cameraViewModel.setCurrentValueRulerView(newZoomLevel);
+                }else
+
+                    setTimeout(() -> {
+
+                        updateZoom(cameraDevice, cameraCaptureSessions, captureRequestBuilder,newZoomLevel*10);
+                        Log.d(TAG, "_setOnZoomLevelChangeListener _updateZoom run newZoomLevel : " + newZoomLevel);
+                    }, 100);
+                cameraViewModel.setCurrentValueRulerView(newZoomLevel);
+
+            }
+
+        });
+
+    }
+
+    public static void setTimeout(Runnable runnable, int delay) {
+        scheduler.schedule(runnable, delay, TimeUnit.MILLISECONDS);
     }
 
     private boolean checkCameraPermission() {
@@ -154,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
     private final TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            openCamera();
+            openCamera(normalCameraId); // Mặc định mở camera thường
         }
 
         @Override
@@ -172,13 +289,20 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private void openCamera() {
-         manager = (CameraManager) getSystemService(CAMERA_SERVICE);
+
+    private void switchCamera(String newCameraId) {
+        closeCamera();
+        openCamera(newCameraId);
+    }
+
+    private void openCamera(String cameraId) {
+        manager = (CameraManager) getSystemService(CAMERA_SERVICE);
         try {
-            String cameraId = manager.getCameraIdList()[0];
+//            String cameraId = manager.getCameraIdList()[0];
+            Log.d(TAG, "_openCamera _cameraId: "+ cameraId);
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
 
-            maxZoom = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+
             cameraCharacteristics = manager.getCameraCharacteristics(cameraId);
 
             zoomSeekBar.setMax((int) (maxZoom * 10));
@@ -189,14 +313,16 @@ public class MainActivity extends AppCompatActivity {
                         textureView.getWidth(), textureView.getHeight());
             }
 
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                cameraManager.openCamera(cameraId, stateCallback, null);
+                cameraViewModel.setCameraDeviceId(cameraId);
+
+//                previewSurfaceSize = getPreviewSurfaceSize();
+            } else {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
-                return;
             }
-            manager.openCamera(cameraId, stateCallback, null);
         } catch (CameraAccessException e) {
-            Log.e(TAG, "Failed to open camera", e);
-            Toast.makeText(this, "Failed to open camera: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
         }
     }
 
@@ -236,7 +362,11 @@ public class MainActivity extends AppCompatActivity {
             SurfaceTexture texture = textureView.getSurfaceTexture();
             assert texture != null;
             texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
+            Log.d(TAG, "_createCameraPreview previewSize.getWidth() : "+ previewSize.getWidth());
+            Log.d(TAG, "_createCameraPreview previewSize.getHeight() : "+ previewSize.getHeight());
+
             Surface surface = new Surface(texture);
+
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
 
@@ -246,7 +376,7 @@ public class MainActivity extends AppCompatActivity {
                     if (cameraDevice == null) {
                         return;
                     }
-                    cameraCaptureSession = session;
+                    cameraCaptureSessions = session;
                     updatePreview();
                 }
 
@@ -268,17 +398,22 @@ public class MainActivity extends AppCompatActivity {
         }
         captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
         try {
-            cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
         } catch (CameraAccessException e) {
             Log.e(TAG, "Failed to update camera preview", e);
         }
     }
 
-    private void updateZoom(int zoomLevel) {
-        if (cameraDevice == null) {
+    private void updateZoom(CameraDevice cameraDevice,CameraCaptureSession cameraCaptureSessions , CaptureRequest.Builder captureRequestBuilder, float zoomLevel) {
+        if (cameraDevice == null ) {
             return;
         }
         try {
+            Log.d(TAG, "_updateZoom run _cameraDevice: "+ cameraDevice.getId());
+            Log.d(TAG, "_updateZoom run _cameraCaptureSessions: "+ cameraCaptureSessions);
+            Log.d(TAG, "_updateZoom run _captureRequestBuilder: "+ captureRequestBuilder);
+            Log.d(TAG, "_updateZoom run _zoomLevel: "+ zoomLevel);
+
             CameraManager manager = (CameraManager) getSystemService(CAMERA_SERVICE);
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraDevice.getId());
             Rect activeRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
@@ -287,14 +422,16 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            float zoomFactor = (float) zoomLevel / zoomSeekBar.getMax();
+            float zoomFactor = (float) zoomLevel / (float) (ruler_view.getMaxZoomLevel()*10) ;
+//            float zoomFactor = (float) zoomLevel / 80.0f ;
 
             // Ensure zoom factor is within bounds
             zoomFactor = Math.max(1f, Math.min(zoomFactor * maxZoom, maxZoom)); // 1 - 80 (sam sung s21)
 
-            Log.e(TAG, "zoomLevel:: " + zoomLevel);
-            Log.e(TAG, "maxZoom:: " + maxZoom);
-            Log.e(TAG, "zoomFactor:: " + zoomFactor);
+            Log.d(TAG, "_updateZoom _zoomLevel:: " + zoomLevel);
+            Log.d(TAG, "_updateZoom _maxZoom:: " + maxZoom);
+            Log.d(TAG, "_updateZoom _zoomFactor:: " + zoomFactor);
+            Log.d(TAG, "_updateZoom _ruler_view.getMaxZoomLevel():: " + ruler_view.getMaxZoomLevel()*10);
 
             // Tính toán lại vùng crop
             int minW = (int) (activeRect.width() / maxZoom);
@@ -312,20 +449,20 @@ public class MainActivity extends AppCompatActivity {
 
             Rect zoomRect = new Rect(cropW, cropH, activeRect.width() - cropW, activeRect.height() - cropH);
 
-            Log.d(TAG, "zoomRect end: " + zoomRect);
+            Log.d(TAG, "_updateZoom zoomRect end: " + zoomRect);
             captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
-            cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
         } catch (CameraAccessException e) {
-            Log.e(TAG, "Failed to update zoom", e);
+            Log.e(TAG, "_updateZoom Failed to update zoom", e);
         } catch (IllegalArgumentException e) {
-            Log.e(TAG, "Invalid zoom parameters", e);
+            Log.e(TAG, "_updateZoom Invalid zoom parameters", e);
         }
     }
 
     private void closeCamera() {
-        if (cameraCaptureSession != null) {
-            cameraCaptureSession.close();
-            cameraCaptureSession = null;
+        if (cameraCaptureSessions != null) {
+            cameraCaptureSessions.close();
+            cameraCaptureSessions = null;
         }
         if (cameraDevice != null) {
             cameraDevice.close();
@@ -350,7 +487,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (textureView.isAvailable()) {
-            openCamera();
+            openCamera(normalCameraId);
         } else {
             textureView.setSurfaceTextureListener(textureListener);
         }
