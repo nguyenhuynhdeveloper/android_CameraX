@@ -261,6 +261,8 @@ public class MainActivity extends Activity {
                         try {
                             if (output != null) {
                                 output.close();
+                                Toast.makeText(MainActivity.this, "Saved------: " + file, Toast.LENGTH_SHORT).show();
+
 //                                Toast.makeText(MainActivity.this, "Saved --------: " + file, Toast.LENGTH_SHORT).show(); // run _backgroundHandler OK
 //                                btnCapture.setText("Done capture ---"); // run _backgroundHandler not OK
                             }
