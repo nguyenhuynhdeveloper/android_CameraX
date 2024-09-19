@@ -43,7 +43,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+
+import android.os.Handler;
+import android.os.HandlerThread;
+
 public class MainActivity extends AppCompatActivity {
+
+    private Handler backgroundHandler;
+    private HandlerThread backgroundThread;
 
     private static final int REQUEST_CAMERA_PERMISSION = 200;
 
@@ -65,58 +72,68 @@ public class MainActivity extends AppCompatActivity {
         textureView = findViewById(R.id.textureView);
         btnCapture = findViewById(R.id.btnCapture);
 
-        textureView.setSurfaceTextureListener(textureListener);
+        textureView.setSurfaceTextureListener(textureListener); // Trong hàm này, chúng ta thiết lập giao diện người dùng và gán SurfaceTextureListener cho TextureView.
+//  Gán SurfaceTextureListener cho TextureView để theo dõi các sự kiện liên quan đến SurfaceTexture.
         btnCapture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 takePicture();
             }
         });
-
+// Kiểm tra quyền xem nếu chưa có quyền thì sẽ hỏi lại quyền
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
         }
     }
 
+    // Đây là một listener để theo dõi các sự kiện liên quan đến SurfaceTexture của TextureView.
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
+
+        // Được gọi khi SurfaceTexture đã sẵn sàng để sử dụng. Chúng ta mở camera trong hàm này.
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             openCamera();
         }
-
+// Được gọi khi kích thước của SurfaceTexture thay đổi.
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
         }
 
+        // Được gọi khi SurfaceTexture bị phá hủy.
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
             return false;
         }
-
+// Được gọi khi SurfaceTexture được cập nhật.
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
         }
     };
 
+    // Đây là một callback để theo dõi trạng thái của CameraDevice.
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
+
+        // Được gọi khi camera đã được mở thành công. Chúng ta lưu lại CameraDevice và tạo preview camera.
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
-            cameraDevice = camera;
+            cameraDevice = camera;  // Đây là nơi tạo ra đối tượng camẻaDevice
             createCameraPreview();
         }
 
+        // Được gọi khi camera bị ngắt kết nối. Chúng ta đóng camera trong hàm này.
         @Override
         public void onDisconnected(@NonNull CameraDevice camera) {
             cameraDevice.close();
         }
 
+        // Được gọi khi có lỗi xảy ra với camera. Chúng ta đóng camera và đặt cameraDevice về null.
         @Override
         public void onError(@NonNull CameraDevice camera, int error) {
             cameraDevice.close();
             cameraDevice = null;
         }
     };
-
+    // Hàm này mở camera. Nó lấy CameraManager, xác định camera ID, kiểm tra quyền truy cập camera và mở camera.
     private void openCamera() {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
@@ -124,25 +141,26 @@ public class MainActivity extends AppCompatActivity {
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
-            manager.openCamera(cameraId, stateCallback, null);
+            manager.openCamera(cameraId, stateCallback, null);   // Mở camera bằng cách gọi
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
 
+    // Hàm này tạo preview cho camera. Nó thiết lập SurfaceTexture, tạo CaptureRequest và tạo phiên chụp (CameraCaptureSession).
     private void createCameraPreview() {
         try {
-            SurfaceTexture texture = textureView.getSurfaceTexture();
-            texture.setDefaultBufferSize(imageDimension.getWidth(), imageDimension.getHeight());
-            Surface surface = new Surface(texture);
+            SurfaceTexture texture = textureView.getSurfaceTexture(); // Lấy SurfaceTexture từ TextureView và thiết lập kích thước buffer mặc định.
+            texture.setDefaultBufferSize(imageDimension.getWidth(), imageDimension.getHeight()); // Gán kích thứớc texture
+            Surface surface = new Surface(texture);  // Tạo Surface từ SurfaceTexture.
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            captureRequestBuilder.addTarget(surface);
+            captureRequestBuilder.addTarget(surface); //  Tạo CaptureRequest cho preview và thêm Surface vào CaptureRequest.
 
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession session) {
                     if (cameraDevice == null) return;
-                    cameraCaptureSession = session;
+                    cameraCaptureSession = session;  // Tạo phiên chụp camera
                     updatePreview();
                 }
 
@@ -156,16 +174,19 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Hàm này cập nhật preview của camera.
+    // Nó thiết lập chế độ điều khiển của CaptureRequest và bắt đầu lặp lại yêu cầu chụp (setRepeatingRequest).
     private void updatePreview() {
         if (cameraDevice == null) return;
-        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);  // Thiết lập chế độ điều khiển của CaptureRequest là tự động.
         try {
-            cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+            cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null); // Bắt đầu lặp lại yêu cầu chụp (setRepeatingRequest) để cập nhật preview liên tục.
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
 
+// Hàm này chụp ảnh. Nó thiết lập ImageReader, tạo CaptureRequest cho ảnh tĩnh, và tạo phiên chụp để chụp ảnh.
     private void takePicture() {
         if (cameraDevice == null) return;
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
@@ -190,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
 
             // Camera2 khi chụp ảnh sẽ đưa ra định dạng ImageReader
             // Hàm tạo một ImageReader để nhận ảnh JPEG và thiết lập các Surface đầu ra
-            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
+            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);  // Tạo ImageReader với kích thước ảnh xác định.
 
             List<Surface> outputSurfaces = new ArrayList<>(2);  // Biến mấu chốt: Sẽ phục vụ cho cameraDevice.createCaptureSession
             outputSurfaces.add(reader.getSurface());
@@ -215,7 +236,11 @@ public class MainActivity extends AppCompatActivity {
 
             // Lưu ảnh khi nó có sẵn
             // Tạo 1 biến lắng nghe sự đọc ảnh , biến này sẽ được gán vào render :ImageReader ở trên
+            // Đây là một listener để theo dõi khi ảnh đã sẵn sàng.
+
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
+
+                // Được gọi khi ảnh đã sẵn sàng. Nó lấy ảnh từ ImageReader, đọc dữ liệu từ ảnh và lưu lại.
                 @Override
                 public void onImageAvailable(ImageReader reader) {
                     Image image = null;
@@ -231,9 +256,9 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }
-                // Hàm lưu hình ảnh vào file đường dẫn
+                // Hàm lưu hình ảnh vào file đường dẫn  ---  Lưu dữ liệu ảnh vào file.
                 private void save(byte[] bytes) {
-                    OutputStream output = null;
+                    OutputStream output = null;  // Mở OutputStream và ghi dữ liệu ảnh vào file.
                     try {
                         output = new FileOutputStream(file);
                         output.write(bytes);
@@ -255,7 +280,7 @@ public class MainActivity extends AppCompatActivity {
             // Nó đọc dữ liệu từ ImageReader, lưu dữ liệu vào file và đóng Image.
             reader.setOnImageAvailableListener(readerListener, null);
 
-            // Tạo biến dể phục vụ hàm lắng nghe khi thao tác chụp ảnh - Biến mấu chốt: sẽ phục vụ cho cameraDevice.createCaptureSession
+            // Tạo biến dể phục vụ hàm lắng nghe khi thao tác chụp ảnh - Biến mấu chốt: --->  sẽ phục vụ cho cameraDevice.createCaptureSession
             final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
                 @Override
                 public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
@@ -301,4 +326,56 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
+   //  // Hàm này được gọi khi Activity được tiếp tục. Nó khởi động luồng nền và mở camera nếu TextureView đã sẵn sàng.
+//    @Override
+//    protected void onResume() {
+//        super.onResume();
+//        startBackgroundThread();  // Khởi động luồng nền (startBackgroundThread()).
+    // // Kiểm tra nếu TextureView đã sẵn sàng thì mở camera, nếu không thì gán SurfaceTextureListener.
+//        if (textureView.isAvailable()) {  // Nếu  textureView đã sẵn sàng thì mở camera
+//            openCamera();
+//        } else {
+//            textureView.setSurfaceTextureListener(textureListener);  // nếu chưa có thì khởi tạo lại _textureListener trong biến đó đã có mở camera rồi
+//        }
+//    }
+
+    // Hàm này được gọi khi Activity bị tạm dừng. Nó dừng luồng nền.
+    // Khi Activity bị tạm dừng, bạn nên đóng phiên camera để tránh các lỗi liên quan đến phiên bị đóng.
+//    @Override
+//    protected void onPause() {
+//        stopBackgroundThread();  // dừng luồng nền (stopBackgroundThread()
+//        super.onPause();  // Đóng camera (closeCamera())
+//    }
+
+    // // Hàm này khởi động luồng nền để xử lý các tác vụ liên quan đến camera.
+//// Tạo và khởi động HandlerThread và Handler cho luồng nền.
+//    private void startBackgroundThread() {
+//        backgroundThread = new HandlerThread("Camera Background");
+//        backgroundThread.start();
+//        backgroundHandler = new Handler(backgroundThread.getLooper());
+//    }
+
+   ////  Hàm này dừng luồng nền. Dừng HandlerThread một cách an toàn và giải phóng tài nguyên.
+//    private void stopBackgroundThread() {
+//        backgroundThread.quitSafely();
+//        try {
+//            backgroundThread.join();
+//            backgroundThread = null;
+//            backgroundHandler = null;
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//    }
 }
+
+
+
+// Tổng kết
+//textureListener  -->  cho textureView.setSurfaceTextureListener(textureListener);
+//
+//
+//openCamera --> cho textureListener
+//
+//
+//updatePreview  -> createCameraPreview  -> stateCallback -> openCamera
