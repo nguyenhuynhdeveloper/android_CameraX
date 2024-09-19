@@ -189,10 +189,12 @@ public class MainActivity extends Activity {
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
             }
-            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
+            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);  // Quản lý việc đọc File
+
             List<Surface> outputSurfaces = new ArrayList<>(2);
             outputSurfaces.add(reader.getSurface());
             outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));
+
             final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(reader.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
@@ -209,6 +211,7 @@ public class MainActivity extends Activity {
             // Tạo 1 biến lắng nghe sự đọc ảnh , biến này sẽ được gán vào render :ImageReader ở trên
             // Đây là một listener để theo dõi khi ảnh đã sẵn sàng.
 
+            // Tạo 1 biến để phục vụ : Lắng nghe việc đọc và lưu file
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
 
                 // Được gọi khi ảnh đã sẵn sàng. Nó lấy ảnh từ ImageReader, đọc dữ liệu từ ảnh và lưu lại.
@@ -249,7 +252,7 @@ public class MainActivity extends Activity {
 
             reader.setOnImageAvailableListener(readerListener, backgroundHandler);
 
-
+// Tạo 1 biến để phục vụ  : Lắng nghe phiên chụp ảnh
             final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
                 @Override
                 public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
@@ -260,13 +263,16 @@ public class MainActivity extends Activity {
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
                     super.onCaptureCompleted(session, request, result);
                     Toast.makeText(MainActivity.this, "Saved: " + file, Toast.LENGTH_SHORT).show();
-                    createCameraPreview();
+                    createCameraPreview();   // Lắng nghe chụp ảnh xong thì gắn lại Preview vào texture
                 }
             };
+
+// Hàm chụp ảnh - kích hoạt phiên chụp ảnh
             cameraDevice.createCaptureSession(outputSurfaces, new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession session) {
                     try {
+                        // Phương thức này gửi một yêu cầu chụp ảnh đến camera và sử dụng captureListener để nhận thông báo khi yêu cầu hoàn tất.
                         session.capture(captureBuilder.build(), captureListener, backgroundHandler);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
@@ -281,6 +287,8 @@ public class MainActivity extends Activity {
             e.printStackTrace();
         }
     }
+
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST_CAMERA_PERMISSION) {
