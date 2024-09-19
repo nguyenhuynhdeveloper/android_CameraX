@@ -582,6 +582,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST_CAMERA_PERMISSION) {
+
+            Log.d(TAG, "_Permission _onRequestPermissionsResult run requestCode: "+ requestCode);
+            Log.d(TAG, "_Permission _onRequestPermissionsResult run _permissions: "+ permissions);
+            Log.d(TAG, "_Permission _onRequestPermissionsResult run _grantResults: "+ grantResults);
+
             if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
                 // Quyền bị từ chối
                 finish();
