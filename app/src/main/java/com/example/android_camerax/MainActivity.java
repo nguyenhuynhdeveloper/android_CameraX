@@ -8,6 +8,8 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
+
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.Arrays;
 import java.util.Set;
@@ -36,6 +38,35 @@ public class MainActivity extends AppCompatActivity {
                 CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
                 float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
                 int lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    CameraCharacteristics.Key<Integer> multi =    CameraCharacteristics.LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE;
+
+//                    System.out.println("Wide_Angle_Camera Camera multi: " + Arrays.toString(multi));
+                    System.out.println("Wide_Angle_Camera Camera multi: " + multi.toString());
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    Integer syncType = characteristics.get(CameraCharacteristics.LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE);
+
+                    if (syncType != null) {
+                        switch (syncType) {
+                            case CameraCharacteristics.LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_APPROXIMATE:
+                                Log.d("TAG", "Camera ID " + cameraId + " supports multi-camera with APPROXIMATE sync.");
+                                break;
+                            case CameraCharacteristics.LOGICAL_MULTI_CAMERA_SENSOR_SYNC_TYPE_CALIBRATED:
+                                Log.d("TAG", "Camera ID " + cameraId + " supports multi-camera with CALIBRATED sync.");
+                                break;
+                            default:
+                                Log.d("TAG", "Camera ID " + cameraId + " does not support logical multi-camera.");
+                                break;
+                        }
+                    } else {
+                        Log.d("TAG", "Camera ID " + cameraId + " does not support multi-camera or sync type is undefined.");
+                    }
+                } else {
+                    Log.d("TAG", "Multi-camera support is only available on Android P or higher.");
+                }
 
                 System.out.println("Wide_Angle_Camera Camera ID: " + cameraId);
                 System.out.println("Wide_Angle_Camera lensFacing: " + lensFacing);
