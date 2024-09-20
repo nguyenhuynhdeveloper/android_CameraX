@@ -223,7 +223,26 @@ public class MainActivity extends Activity {
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                         byte[] bytes = new byte[buffer.capacity()];
                         buffer.get(bytes);
-                        save(bytes);
+
+//                        save(bytes);   // Vẫn chạy trên luồng _backgroundHandler
+
+                        // Chạy hàm save trên một thread riêng
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                save(bytes);
+
+                                // Cập nhật UI sau khi lưu ảnh hoàn tất
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        // Hàm cập nhật UI, ví dụ như hiển thị thông báo hoặc cập nhật giao diện
+                                        btnCapture.setText("Done capture ---");
+                                    }
+                                });
+                            }
+                        }).start();
+
                     } finally {
                         if (image != null) {
                             image.close();
@@ -242,6 +261,8 @@ public class MainActivity extends Activity {
                         try {
                             if (output != null) {
                                 output.close();
+//                                Toast.makeText(MainActivity.this, "Saved --------: " + file, Toast.LENGTH_SHORT).show(); // run _backgroundHandler OK
+//                                btnCapture.setText("Done capture ---"); // run _backgroundHandler not OK
                             }
                         } catch (IOException e) {
                             e.printStackTrace();
