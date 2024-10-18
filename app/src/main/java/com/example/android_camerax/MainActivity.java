@@ -15,6 +15,7 @@ import android.hardware.camera2.CaptureRequest;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
+import android.util.SizeF;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -67,10 +68,8 @@ public class MainActivity extends AppCompatActivity {
         buttonNormalCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 switchCamera("1");
 //                switchCamera(normalCameraId);
-
             }
         });
 
@@ -79,7 +78,6 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 switchCamera("2");
 //                switchCamera(teleCameraId);
-
             }
         });
 
@@ -88,29 +86,71 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 switchCamera("3");
 //                switchCamera(frontCameraId);
-
             }
         });
 
+
+        detectWideAngleCamera(MainActivity.this);
+//        try {
+//
+//            // // Lấy ra các camera có trên thiết bị
+//            for (String cameraId : cameraManager.getCameraIdList()) {
+//                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+//                int lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
+//                float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+//
+//                Log.d(TAG, "cameraId: " +cameraId);
+//                Log.d(TAG, "lensFacing: " +lensFacing);
+//                Log.d(TAG, "focalLengths: " + Arrays.toString(focalLengths));
+//
+//                if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
+//                    frontCameraId = cameraId; // Camera trước
+//                } else if (focalLengths != null && focalLengths.length > 0) {
+//                    if (focalLengths[0] < 2.0) {
+//                        wideCameraId = cameraId; // Camera góc rộng
+//                    } else if (focalLengths[0] > 4.0) {
+//                        teleCameraId = cameraId; // Camera tele
+//                    } else {
+//                        normalCameraId = cameraId; // Camera thường
+//                    }
+//                }
+//            }
+//        } catch (CameraAccessException e) {
+//            e.printStackTrace();
+//        }
+    }
+
+    public void detectWideAngleCamera(Context context) {
+        CameraManager manager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+
         try {
-            for (String cameraId : cameraManager.getCameraIdList()) {
-                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
-                int lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING);
+            // Get the list of available camera IDs
+            String[] cameraIds = manager.getCameraIdList();
+            Log.d(TAG, "_cameraIds: "+ Arrays.toString(cameraIds));
+
+            for (String cameraId : cameraIds) {
+                Log.d(TAG, "_cameraIds cameraId: "+ cameraId);
+                CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+
+                Log.d(TAG, "_cameraIds characteristics: "+ characteristics.toString());
+
+
+                // Get focal lengths (usually in millimeters)
                 float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+                Log.d(TAG, "_cameraIds focalLengths: "+ Arrays.toString(focalLengths));
 
-                Log.d(TAG, "cameraId: " +cameraId);
-                Log.d(TAG, "lensFacing: " +lensFacing);
-                Log.d(TAG, "focalLengths: " + Arrays.toString(focalLengths));
+                // Get sensor size
+                SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+                Log.d(TAG, "_cameraIds sensorSize: "+ sensorSize);
 
-                if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
-                    frontCameraId = cameraId; // Camera trước
-                } else if (focalLengths != null && focalLengths.length > 0) {
-                    if (focalLengths[0] < 2.0) {
-                        wideCameraId = cameraId; // Camera góc rộng
-                    } else if (focalLengths[0] > 4.0) {
-                        teleCameraId = cameraId; // Camera tele
-                    } else {
-                        normalCameraId = cameraId; // Camera thường
+                if (focalLengths != null && sensorSize != null) {
+                    for (float focalLength : focalLengths) {
+                        // Calculate field of view or check based on known values
+                        // For wide or ultra-wide, focalLength will be typically less than ~4-5mm (depends on sensor)
+                        if (focalLength < 5.0f) {
+                            // This could be a wide or ultra-wide camera
+                            System.out.println("Camera ID " + cameraId + " is wide/ultra-wide");
+                        }
                     }
                 }
             }
@@ -122,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            openCamera(teleCameraId); // Mặc định mở camera thường
+            openCamera("0"); // Mặc định mở camera thường
         }
 
         @Override
@@ -229,7 +269,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (textureView.isAvailable()) {
-            openCamera(normalCameraId); // Mặc định mở camera thường
+//            openCamera(normalCameraId); // Mặc định mở camera thường
+            openCamera("0"); // Mặc định mở camera thường
         } else {
             textureView.setSurfaceTextureListener(textureListener);
         }
