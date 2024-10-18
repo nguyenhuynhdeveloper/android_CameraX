@@ -4,6 +4,7 @@ package com.example.android_camerax;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
@@ -25,6 +26,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import java.util.Arrays;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -120,38 +122,119 @@ public class MainActivity extends AppCompatActivity {
 //        }
     }
 
+//    public void detectWideAngleCamera(Context context) {
+//        CameraManager manager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+//
+//        try {
+//            // Get the list of available camera IDs
+//            String[] cameraIds = manager.getCameraIdList();
+//            Log.d(TAG, "_cameraIds: "+ Arrays.toString(cameraIds));
+//
+//            for (String cameraId : cameraIds) {
+//                Log.d(TAG, "_cameraIds cameraId: "+ cameraId);
+//                CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+//
+//                Log.d(TAG, "_cameraIds characteristics: "+ characteristics.toString());
+//
+//
+//                // Get focal lengths (usually in millimeters)
+//                float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+//                Log.d(TAG, "_cameraIds focalLengths: "+ Arrays.toString(focalLengths));
+//
+//                // Get sensor size
+//                SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+//                Log.d(TAG, "_cameraIds sensorSize: "+ sensorSize);
+//
+//                if (focalLengths != null && sensorSize != null) {
+//                    for (float focalLength : focalLengths) {
+//                        // Calculate field of view or check based on known values
+//                        // For wide or ultra-wide, focalLength will be typically less than ~4-5mm (depends on sensor)
+//                        if (focalLength < 5.0f) {
+//                            // This could be a wide or ultra-wide camera
+//                            System.out.println("Camera ID " + cameraId + " is wide/ultra-wide");
+//                        }
+//                    }
+//                }
+//            }
+//        } catch (CameraAccessException e) {
+//            e.printStackTrace();
+//        }
+//    }
+
+
+//    public void detectWideAngleCamera(Context context) {
+//        CameraManager manager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+//
+//        try {
+//            // Get the list of available camera IDs
+//            String[] cameraIds = manager.getCameraIdList();
+//            Log.d(TAG, "_cameraIds: "+ Arrays.toString(cameraIds));
+//
+//            for (String cameraId : cameraIds) {
+//                Log.d(TAG, "_cameraIds cameraId: "+ cameraId);
+//                CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+//
+//                Log.d(TAG, "_cameraIds characteristics: "+ characteristics.toString());
+//
+//
+//                // Get the camera lens focal lengths (in millimeters)
+//                float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+//                Log.d(TAG, "_cameraIds focalLengths: "+ Arrays.toString(focalLengths));
+//
+//                // Get sensor size
+//                SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+//                Log.d(TAG, "_cameraIds sensorSize: "+ sensorSize);
+//
+//                if (focalLengths != null && sensorSize != null) {
+//                    for (float focalLength : focalLengths) {
+//                        // Check focal length to identify wide-angle or ultra-wide-angle cameras
+//                        if (focalLength < 5.0f) {
+//                            if (focalLength < 2.0f) {
+//                                // Typically ultra-wide-angle lens in Pixel phones
+//                                System.out.println("_cameraIds: Camera ID " + cameraId + " is an Ultra-Wide camera.");
+//                            } else {
+//                                // Wide-angle lens
+//                                System.out.println("_cameraIds: Camera ID " + cameraId + " is a Wide camera.");
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        } catch (CameraAccessException e) {
+//            e.printStackTrace();
+//        }
+//    }
+
     public void detectWideAngleCamera(Context context) {
-        CameraManager manager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+        CameraManager cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
 
         try {
-            // Get the list of available camera IDs
-            String[] cameraIds = manager.getCameraIdList();
-            Log.d(TAG, "_cameraIds: "+ Arrays.toString(cameraIds));
-
+            String[] cameraIds = cameraManager.getCameraIdList();
             for (String cameraId : cameraIds) {
-                Log.d(TAG, "_cameraIds cameraId: "+ cameraId);
-                CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
 
-                Log.d(TAG, "_cameraIds characteristics: "+ characteristics.toString());
+                // Get the sensor array size
+                Rect sensorRect = characteristics.get(characteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+                Log.d(TAG, "_cameraIds sensorRect: "+ sensorRect);
 
+                float maxZoom = characteristics.get(characteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+                Log.d(TAG, "_cameraIds maxZoom: "+ maxZoom);
 
-                // Get focal lengths (usually in millimeters)
-                float[] focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
-                Log.d(TAG, "_cameraIds focalLengths: "+ Arrays.toString(focalLengths));
-
-                // Get sensor size
-                SizeF sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
-                Log.d(TAG, "_cameraIds sensorSize: "+ sensorSize);
-
-                if (focalLengths != null && sensorSize != null) {
-                    for (float focalLength : focalLengths) {
-                        // Calculate field of view or check based on known values
-                        // For wide or ultra-wide, focalLength will be typically less than ~4-5mm (depends on sensor)
-                        if (focalLength < 5.0f) {
-                            // This could be a wide or ultra-wide camera
-                            System.out.println("Camera ID " + cameraId + " is wide/ultra-wide");
-                        }
+                // Check if it's a logical camera with multiple physical cameras
+                Set<String> physicalCameraIds = null;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    physicalCameraIds = characteristics.getPhysicalCameraIds();
+                    Log.d(TAG, "_cameraIds physicalCameraIds: "+ physicalCameraIds);
+                }
+                if (physicalCameraIds != null && !physicalCameraIds.isEmpty()) {
+                    // This is a logical camera with multiple physical cameras
+                    System.out.println("_cameraIds Logical camera ID: " + cameraId);
+                    for (String physicalCameraId : physicalCameraIds) {
+                        System.out.println("_cameraIds Physical camera ID: " + physicalCameraId);
                     }
+                } else {
+                    // This is a single physical camera
+                    System.out.println("_cameraIds Single camera ID: " + cameraId);
                 }
             }
         } catch (CameraAccessException e) {
