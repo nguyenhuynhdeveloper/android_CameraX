@@ -53,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
         Button buttonNormalCamera = findViewById(R.id.buttonNormalCamera);
         Button buttonTeleCamera = findViewById(R.id.buttonTeleCamera);
         Button buttonFrontCamera = findViewById(R.id.buttonFrontCamera);
+        Button getCharateristics = findViewById(R.id.getCharacteristics);
 
         cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
 
@@ -88,6 +89,13 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 switchCamera("3");
 //                switchCamera(frontCameraId);
+            }
+        });
+
+        getCharateristics.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                detectWideAngleCamera(MainActivity.this);
             }
         });
 

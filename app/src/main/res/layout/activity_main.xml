@@ -48,5 +48,13 @@
            android:layout_width="wrap_content"
            android:layout_height="wrap_content"
            android:text="3" />
+
+
+       <Button
+           android:id="@+id/getCharacteristics"
+           android:layout_width="wrap_content"
+           android:layout_height="wrap_content"
+           android:background="@color/purple_200"
+           android:text="Get Characteristics" />
    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
