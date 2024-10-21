@@ -63,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                switchCamera("0");
+                switchCamera("12");
 //                switchCamera(wideCameraId);
             }
         });
@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
         buttonNormalCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                switchCamera("1");
+                switchCamera("13");
 //                switchCamera(normalCameraId);
             }
         });
@@ -219,6 +219,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             String[] cameraIds = cameraManager.getCameraIdList();
             for (String cameraId : cameraIds) {
+                Log.d(TAG, "_cameraIds cameraId: "+ cameraId);
                 CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
 
                 // Get the sensor array size
