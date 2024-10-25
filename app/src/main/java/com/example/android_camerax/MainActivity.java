@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -25,6 +26,8 @@ public class MainActivity extends AppCompatActivity {
     private Uri imageUri;
     private ImageView imageView;
 
+    private static final String TAG = "MainActivity";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,11 +38,14 @@ public class MainActivity extends AppCompatActivity {
 
         captureButton.setOnClickListener(v -> {
             if (checkPermissions()) {
+                Log.d(TAG, "front _onCreate _setOnClickListener -> _openCamera run: ");
                 openCamera();
             } else {
                 requestPermissions();
             }
         });
+
+        Log.d(TAG, "_onCreate run: ");
     }
 
     private boolean checkPermissions() {
@@ -57,10 +63,25 @@ public class MainActivity extends AppCompatActivity {
     private void openCamera() {
         Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (cameraIntent.resolveActivity(getPackageManager()) != null) {
+
             imageUri = createImageUri();
+            Log.d(TAG, "front _openCamera _imageUri: "+ imageUri);
             if (imageUri != null) {
+
+                // Run ok
+                Log.d(TAG, "front _openCamera _imageUri != null : "+ imageUri);
                 cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
                 startActivityForResult(cameraIntent, REQUEST_IMAGE_CAPTURE);
+                // ------------
+
+//                PackageManager packageManager = getPackageManager();
+//                if (packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT)) {
+////                    Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+//                    startActivityForResult(cameraIntent, REQUEST_IMAGE_CAPTURE);
+//                } else {
+//                    Toast.makeText(this, "Thiết bị không hỗ trợ camera trước", Toast.LENGTH_SHORT).show();
+//                }
+
             }
         }
     }
@@ -78,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
         if (uri == null) {
             Toast.makeText(this, "Failed to create image URI", Toast.LENGTH_SHORT).show();
         }
+        Log.d(TAG, "front _createImageUri _uri: "+ uri);
         return uri;
     }
 
@@ -86,9 +108,14 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            Log.d(TAG , "front _onActivityResult _imageUri: "+ imageUri);
+
             if (imageUri != null) {
                 // Hiển thị ảnh đã chụp
+                Log.d(TAG , "front _onActivityResult _imageUri: "+ imageUri);
                 imageView.setImageURI(imageUri);
+
+                // Lưu ảnh vào trong bộ nhớ --- điện thoại thì lưu ảnh thành công
                 saveImage();
             }
         }
@@ -99,8 +126,10 @@ public class MainActivity extends AppCompatActivity {
             ContentValues values = new ContentValues();
             values.put(MediaStore.Images.Media.IS_PENDING, 0);
             getContentResolver().update(imageUri, values, null, null);
+            Log.d(TAG, "front _saveImage run if: ");
         } else {
             try {
+                Log.d(TAG, "front _saveImage run _imageUri: "+ imageUri);
                 OutputStream outputStream = getContentResolver().openOutputStream(imageUri);
                 outputStream.close();
             } catch (Exception e) {
