@@ -59,6 +59,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView countdownTextView;
     private SeekBar zoomSeekBar;
 
+    Camera2InteropSwitcher cameraSwitcher;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,7 +79,10 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);  // Hỏi quyền khi chưa có quyền
         }
 
-        captureButton.setOnClickListener(v -> startCountdown());   // Khi click chụp ảnh thì sẽ bắt đàu đếm ngược thời gian
+        captureButton.setOnClickListener(v ->
+//                startCountdown()  // Khi click chụp ảnh thì sẽ bắt đàu đếm ngược thời gian
+                takePhoto()
+        );
 
         switchCameraButton.setOnClickListener(v -> {
             isUsingFrontCamera = !isUsingFrontCamera;
@@ -149,6 +154,19 @@ public class MainActivity extends AppCompatActivity {
         });
 
         cameraExecutor = Executors.newSingleThreadExecutor();  // Tạo ra 1 thread pool với duy nhất 1 thread thực hiện các tác vụ tuần tự
+
+        Camera2InteropSwitcher cameraSwitcher = new Camera2InteropSwitcher(this, previewView);
+
+// Initialize the camera system
+        cameraSwitcher.setupCamera();
+
+// Switch cameras on button clicks
+        findViewById(R.id.switchToWideButton).setOnClickListener(
+                v -> cameraSwitcher.switchToWideCamera()
+        );
+
+        findViewById(R.id.switchToUltraWideButton).setOnClickListener(
+                v -> cameraSwitcher.switchToUltraWideCamera());
     }
 
     // Hàm bắt đầu khởi động camera lên
