@@ -15,6 +15,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import androidx.camera.core.AspectRatio;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraControl;
 import androidx.camera.core.CameraInfo;
@@ -176,8 +177,28 @@ public class MainActivity extends AppCompatActivity {
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider = cameraProviderFuture.get();
-                Preview preview = new Preview.Builder().build();
-                imageCapture = new ImageCapture.Builder().build();
+
+//                Preview preview = new Preview.Builder().build();
+//                imageCapture = new ImageCapture.Builder().build();
+
+                // Create Preview Use Case
+                Preview preview = new Preview.Builder()
+                        .setTargetAspectRatio(AspectRatio.RATIO_4_3) // Ensure the same aspect ratio
+                        .build();
+
+                // Create ImageCapture Use Case
+                 imageCapture = new ImageCapture.Builder()
+                        .setTargetAspectRatio(AspectRatio.RATIO_4_3) // Match with Preview
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                        .build();
+
+                int rotation = previewView.getDisplay().getRotation();
+                preview.setTargetRotation(rotation);
+                imageCapture.setTargetRotation(rotation);
+
+                previewView.setImplementationMode(PreviewView.ImplementationMode.PERFORMANCE);
+                previewView.setScaleType(PreviewView.ScaleType.FILL_CENTER); // Or FIT_CENTER
+
 
                 cameraSelector = new CameraSelector.Builder()
                         .requireLensFacing(isUsingFrontCamera ? CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK)
