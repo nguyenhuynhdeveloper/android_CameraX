@@ -6,7 +6,10 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.util.Log;
+import android.util.Size;
 import android.view.ScaleGestureDetector;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -20,6 +23,7 @@ import androidx.camera.core.Camera;
 import androidx.camera.core.CameraControl;
 import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.Preview;
@@ -168,6 +172,17 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.switchToUltraWideButton).setOnClickListener(
                 v -> cameraSwitcher.switchToUltraWideCamera());
+
+
+        // ép preview = picture image
+        // Đoạn mấu chốt set cứng preview ==> để khi chụp ảnh ảnh chụp trùng khớp với hình ảnh preview 
+        previewView.setVisibility(View.VISIBLE);
+        int screenHeight = getResources().getDisplayMetrics().heightPixels;
+        int calculatedHeight = (screenHeight /3 ) * 2;
+        ViewGroup.LayoutParams params = previewView.getLayoutParams();
+
+        params.height = calculatedHeight;
+        previewView.setLayoutParams(params);
     }
 
     // Hàm bắt đầu khởi động camera lên
@@ -178,18 +193,21 @@ public class MainActivity extends AppCompatActivity {
             try {
                 cameraProvider = cameraProviderFuture.get();
 
-//                Preview preview = new Preview.Builder().build();
+                // Chỉ cần để preview như này thì ảnh chụp = ảnh Preview 
+
+                Preview preview = new Preview.Builder().build();
 //                imageCapture = new ImageCapture.Builder().build();
 
                 // Create Preview Use Case
-                Preview preview = new Preview.Builder()
-                        .setTargetAspectRatio(AspectRatio.RATIO_4_3) // Ensure the same aspect ratio
-                        .build();
+//                Preview preview = new Preview.Builder()
+//                        .setTargetAspectRatio(AspectRatio.RATIO_4_3) // Ensure the same aspect ratio
+//                        .build();
 
                 // Create ImageCapture Use Case
-                 imageCapture = new ImageCapture.Builder()
-                        .setTargetAspectRatio(AspectRatio.RATIO_4_3) // Match with Preview
-                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                imageCapture = new ImageCapture.Builder()
+//                        .setTargetAspectRatio(AspectRatio.RATIO_4_3) // Match with Preview
+//                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                         .build();
 
                 int rotation = previewView.getDisplay().getRotation();
@@ -207,7 +225,20 @@ public class MainActivity extends AppCompatActivity {
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
                 cameraProvider.unbindAll();
-                camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
+
+                int screenWidth = getResources().getDisplayMetrics().widthPixels;
+                int screenHeight = getResources().getDisplayMetrics().heightPixels;
+
+              Size  resolution = new Size((int) screenWidth,
+                        (int) screenHeight);
+
+                        // Option thêm : không cần thiết và cũng không ảnh hưởng picture = preview 
+                        ImageAnalysis imageAnalysis =  new ImageAnalysis.Builder()
+                        .setTargetResolution(resolution) // Desired resolution
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build();
+
+                camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture,imageAnalysis);
                 cameraControl = camera.getCameraControl();
                 cameraInfo = camera.getCameraInfo();
 
