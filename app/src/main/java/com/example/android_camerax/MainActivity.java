@@ -189,7 +189,8 @@ public class MainActivity extends AppCompatActivity {
                 // Create ImageCapture Use Case
                  imageCapture = new ImageCapture.Builder()
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3) // Match with Preview
-                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+//                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                         .build();
 
                 int rotation = previewView.getDisplay().getRotation();
@@ -211,12 +212,14 @@ public class MainActivity extends AppCompatActivity {
                 cameraControl = camera.getCameraControl();
                 cameraInfo = camera.getCameraInfo();
 
+                cameraControl.setZoomRatio(1.0f);
+
                 // Cập nhật thanh Zoom SeekBar khi khởi động camera
-                zoomSeekBar.setMax(100);
-                zoomSeekBar.setProgress((int) ((cameraInfo.getZoomState().getValue().getZoomRatio()
-                        - cameraInfo.getZoomState().getValue().getMinZoomRatio())
-                        / (cameraInfo.getZoomState().getValue().getMaxZoomRatio()
-                        - cameraInfo.getZoomState().getValue().getMinZoomRatio()) * 100));
+//                zoomSeekBar.setMax(100);
+//                zoomSeekBar.setProgress((int) ((cameraInfo.getZoomState().getValue().getZoomRatio()
+//                        - cameraInfo.getZoomState().getValue().getMinZoomRatio())
+//                        / (cameraInfo.getZoomState().getValue().getMaxZoomRatio()
+//                        - cameraInfo.getZoomState().getValue().getMinZoomRatio()) * 100));
 
             } catch (ExecutionException | InterruptedException e) {
                 Log.e("CameraX", "Error starting camera", e);
